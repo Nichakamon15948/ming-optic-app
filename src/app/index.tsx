@@ -1,98 +1,75 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import {
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from 'react-native';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function Index() {
+  const [products] = useState([
+    { id: '1', name: 'Vintage Sunglasses', stock: '12', price: '฿1,200', image: 'https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQ6a0QF-oqnS3BAXYST2SsTWzFk8zyNoaQvd4dFgx-EvZURp_koMRTzfF3GZ3blAgjgQ5Z5uUJFYTzbZV9heu0itsnmrWBA4ExLyFc4vt1qcYS4fRJcwvX1mbNxKZ9QTfTP4Sod8Xg&usqp=CAc' },
+    { id: '2', name: 'Titanium Eyeglasses', stock: '5', price: '฿6,650', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwuADm05QBrUk2Bnqrdb_330B_x9JGfdvA2jO-4zIggA&s=10' },
+    { id: '3', name: 'Blue Light Glasses', stock: '20', price: '฿890', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShI-Ru471Ttu3Tb1RnyproXG1vMUrESmAdDEwEapzwSQ&s=10' },
+  ]);
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+  const [search, setSearch] = useState('');
+  const filteredProducts = search === '' ? products : products.filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
+
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      {/* ส่วนสโลแกนร้าน ใต้แถบ Header ของระบบ */}
+      <View style={styles.header}>
+        <Text style={styles.slogan}>"Your Vision, Our Passion"</Text>
+      </View>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+      {/* ช่องค้นหาสินค้า */}
+      <View style={styles.searchContainer}>
+        <TextInput 
+          style={styles.searchInput} 
+          placeholder="Search for your glasses..." 
+          value={search}
+          onChangeText={setSearch} 
+        />
+        <TouchableOpacity style={styles.searchButton}>
+          <Text style={{color: 'white', fontWeight: '600'}}>Search</Text>
+        </TouchableOpacity>
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      {/* รายการสินค้า 3 ชิ้น */}
+      <ScrollView style={{ flex: 1 }}>
+        {filteredProducts.map((item) => (
+          <View key={item.id} style={styles.card}>
+            <Image source={{ uri: item.image }} style={styles.glassImage} />
+            <View style={{ marginLeft: 15, flex: 1 }}>
+              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.info}>Stock: {item.stock} units</Text>
+              <Text style={styles.price}>{item.price}</Text>
+            </View>
+          </View>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
+  container: { flex: 1, backgroundColor: '#FDF6F6' },
+  header: { paddingBottom: 15, paddingTop: 5, backgroundColor: '#FFF', alignItems: 'center', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 4 },
+  slogan: { fontSize: 13, color: '#999', fontStyle: 'italic' },
+  searchContainer: { flexDirection: 'row', padding: 20, alignItems: 'center', maxWidth: 800, alignSelf: 'center', width: '100%' },
+  searchInput: { flex: 1, backgroundColor: '#FFF', padding: 12, borderRadius: 25, elevation: 2, borderWidth: 1, borderColor: '#F8E1E1' },
+  searchButton: { padding: 12, backgroundColor: '#B5838D', borderRadius: 25, marginLeft: 10, paddingHorizontal: 25 },
+  card: { flexDirection: 'row', backgroundColor: '#FFF', padding: 20, marginHorizontal: 20, marginBottom: 15, borderRadius: 20, alignItems: 'center', borderWidth: 1, borderColor: '#F8E1E1', maxWidth: 800, alignSelf: 'center', width: '90%' },
+  glassImage: { width: 70, height: 70, borderRadius: 15, backgroundColor: '#eee' },
+  name: { fontSize: 16, fontWeight: '500', color: '#4A4A4A' },
+  info: { color: '#999', fontSize: 12, marginTop: 5 },
+  price: { color: '#B5838D', fontWeight: 'bold', marginTop: 5 },
 });
