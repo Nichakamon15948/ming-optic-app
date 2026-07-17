@@ -11,20 +11,20 @@ import {
   View
 } from 'react-native';
 
-// ลิงก์ Raw URL จาก GitHub ของแก (Call ผ่าน GitHub)
+// ลิงก์ Raw URL จาก GitHub 
 const PRODUCTS_URL = 'https://raw.githubusercontent.com/Nichakamon15948/ming-optic-app/refs/heads/main/products.json';
 
 export default function Index() {
-  // เริ่มต้นด้วยกล่องว่างๆ [] เพื่อรอรับข้อมูลจาก GitHub
+  // เปลี่ยนจากฝังข้อมูล เป็นกล่องว่างๆ รอรับจาก GitHub
   const [products, setProducts] = useState([]);
 
-  // ใช้ useEffect ดึงข้อมูลจาก GitHub ทันทีที่เปิดหน้าแอป
+  // ดึงข้อมูลจาก GitHub ทันทีที่เปิดแอป
   useEffect(() => {
     async function loadProducts() {
       try {
         const response = await fetch(PRODUCTS_URL);
         const data = await response.json();
-        setProducts(data); // เอาข้อมูลแว่นที่โหลดได้มาใส่ในแอป
+        setProducts(data);
       } catch (error) {
         console.error("Error loading products:", error);
       }
@@ -58,15 +58,15 @@ export default function Index() {
         </TouchableOpacity>
       </View>
 
-      {/* รายการสินค้า 3 ชิ้น ที่ดึงมาจาก GitHub */}
+      {/* รายการสินค้า 3 ชิ้น (อิงตามตัวแปรเดิมของแกเป๊ะ!) */}
       <ScrollView style={{ flex: 1 }}>
         {filteredProducts.map((item) => (
           <View key={item.id} style={styles.card}>
-            <Image source={{ uri: item.image_url || item.image }} style={styles.glassImage} />
+            <Image source={{ uri: item.image }} style={styles.glassImage} />
             <View style={{ marginLeft: 15, flex: 1 }}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.info}>{item.stock_text || `Stock: ${item.stock} units`}</Text>
-              <Text style={styles.price}>{item.price_text || item.price}</Text>
+              <Text style={styles.info}>Stock: {item.stock} units</Text>
+              <Text style={styles.price}>{item.price}</Text>
             </View>
           </View>
         ))}
