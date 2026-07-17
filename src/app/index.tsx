@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Image,
   SafeAreaView,
@@ -11,12 +11,27 @@ import {
   View
 } from 'react-native';
 
+// ลิงก์ Raw URL จาก GitHub ของแก (Call ผ่าน GitHub)
+const PRODUCTS_URL = 'https://raw.githubusercontent.com/Nichakamon15948/ming-optic-app/refs/heads/main/products.json';
+
 export default function Index() {
-  const [products] = useState([
-    { id: '1', name: 'Vintage Sunglasses', stock: '12', price: '฿1,200', image: 'https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQ6a0QF-oqnS3BAXYST2SsTWzFk8zyNoaQvd4dFgx-EvZURp_koMRTzfF3GZ3blAgjgQ5Z5uUJFYTzbZV9heu0itsnmrWBA4ExLyFc4vt1qcYS4fRJcwvX1mbNxKZ9QTfTP4Sod8Xg&usqp=CAc' },
-    { id: '2', name: 'Titanium Eyeglasses', stock: '5', price: '฿6,650', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwuADm05QBrUk2Bnqrdb_330B_x9JGfdvA2jO-4zIggA&s=10' },
-    { id: '3', name: 'Blue Light Glasses', stock: '20', price: '฿890', image: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShI-Ru471Ttu3Tb1RnyproXG1vMUrESmAdDEwEapzwSQ&s=10' },
-  ]);
+  // เริ่มต้นด้วยกล่องว่างๆ [] เพื่อรอรับข้อมูลจาก GitHub
+  const [products, setProducts] = useState([]);
+
+  // ใช้ useEffect ดึงข้อมูลจาก GitHub ทันทีที่เปิดหน้าแอป
+  useEffect(() => {
+    async function loadProducts() {
+      try {
+        const response = await fetch(PRODUCTS_URL);
+        const data = await response.json();
+        setProducts(data); // เอาข้อมูลแว่นที่โหลดได้มาใส่ในแอป
+      } catch (error) {
+        console.error("Error loading products:", error);
+      }
+    }
+    
+    loadProducts();
+  }, []);
 
   const [search, setSearch] = useState('');
   const filteredProducts = search === '' ? products : products.filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
@@ -43,15 +58,15 @@ export default function Index() {
         </TouchableOpacity>
       </View>
 
-      {/* รายการสินค้า 3 ชิ้น */}
+      {/* รายการสินค้า 3 ชิ้น ที่ดึงมาจาก GitHub */}
       <ScrollView style={{ flex: 1 }}>
         {filteredProducts.map((item) => (
           <View key={item.id} style={styles.card}>
-            <Image source={{ uri: item.image }} style={styles.glassImage} />
+            <Image source={{ uri: item.image_url || item.image }} style={styles.glassImage} />
             <View style={{ marginLeft: 15, flex: 1 }}>
               <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.info}>Stock: {item.stock} units</Text>
-              <Text style={styles.price}>{item.price}</Text>
+              <Text style={styles.info}>{item.stock_text || `Stock: ${item.stock} units`}</Text>
+              <Text style={styles.price}>{item.price_text || item.price}</Text>
             </View>
           </View>
         ))}

@@ -2,34 +2,22 @@
   {
     "id": "1",
     "name": "Vintage Sunglasses",
-    "price": 1200,
-    "price_text": "฿1,200",
-    "stock": 12,
-    "stock_text": "Stock: 12 units",
-    "category": "Sunglasses",
-    "badge_status": "Active",
-    "image_url": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&q=80"
+    "stock": "12",
+    "price": "฿1,200",
+    "image": "https://encrypted-tbn1.gstatic.com/shopping?q=tbn:ANd9GcQ6a0QF-oqnS3BAXYST2SsTWzFk8zyNoaQvd4dFgx-EvZURp_koMRTzfF3GZ3blAgjgQ5Z5uUJFYTzbZV9heu0itsnmrWBA4ExLyFc4vt1qcYS4fRJcwvX1mbNxKZ9QTfTP4Sod8Xg&usqp=CAc"
   },
   {
     "id": "2",
     "name": "Titanium Eyeglasses",
-    "price": 6650,
-    "price_text": "฿6,650",
-    "stock": 5,
-    "stock_text": "Stock: 5 units",
-    "category": "Eyeglasses",
-    "badge_status": "Active",
-    "image_url": "https://images.unsplash.com/photo-1574258495973-f010dfbb5371?w=500&q=80"
+    "stock": "5",
+    "price": "฿6,650",
+    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwuADm05QBrUk2Bnqrdb_330B_x9JGfdvA2jO-4zIggA&s=10"
   },
   {
     "id": "3",
     "name": "Blue Light Glasses",
-    "price": 890,
-    "price_text": "฿890",
-    "stock": 20,
-    "stock_text": "Stock: 20 units",
-    "category": "Blue Light",
-    "badge_status": "Active",
-    "image_url": "https://images.unsplash.com/photo-1591076482161-42ce6da69f67?w=500&q=80"
+    "stock": "20",
+    "price": "฿890",
+    "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShI-Ru471Ttu3Tb1RnyproXG1vMUrESmAdDEwEapzwSQ&s=10"
   }
 ]
