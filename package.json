@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.1",
+    "cors": "^2.8.6",
     "expo": "~57.0.1",
     "expo-constants": "~57.0.2",
     "expo-device": "~57.0.0",
@@ -17,6 +18,8 @@
     "expo-symbols": "~57.0.0",
     "expo-system-ui": "~57.0.0",
     "expo-web-browser": "~57.0.0",
+    "express": "^5.2.1",
+    "mysql2": "^3.23.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.0",
@@ -39,5 +42,18 @@
     "web": "expo start --web",
     "lint": "expo lint"
   },
-  "private": true
+  "private": true,
+  "description": "This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nichakamon15948/ming-optic-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Nichakamon15948/ming-optic-app/issues"
+  },
+  "homepage": "https://github.com/Nichakamon15948/ming-optic-app#readme"
 }

@@ -1,43 +1,29 @@
 import { Drawer } from 'expo-router/drawer';
-import 'react-native-gesture-handler';
 
 export default function RootLayout() {
   return (
-    <Drawer 
-      screenOptions={{ 
-        drawerActiveTintColor: '#B5838D', 
+    <Drawer
+      screenOptions={{
+        drawerActiveTintColor: '#B5838D',
         headerTitle: 'MING OPTIC',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          color: '#B5838D',
-          fontSize: 22,
-          letterSpacing: 2
-        },
-        headerTitleAlign: 'center',
+        headerTintColor: '#B5838D',
       }}
     >
-      {/* 1. หน้าแรก (Home) */}
       <Drawer.Screen 
         name="index" 
-        options={{ drawerLabel: '🏠  Home (Products)', title: 'MING OPTIC' }} 
+        options={{ title: 'Home / Products' }} 
       />
-
-      {/* 2. หน้าค้นหา (Search) */}
       <Drawer.Screen 
-        name="search" 
-        options={{ drawerLabel: '🔍  Search Glasses', title: 'Search Products' }} 
+        name="login" 
+        options={{ title: 'Admin Login' }} 
       />
-
-      {/* 3. หน้าสต็อกสินค้า (Products) */}
       <Drawer.Screen 
-        name="products" 
-        options={{ drawerLabel: '📦  All Products Stock', title: 'Stock Inventory' }} 
+        name="add" 
+        options={{ title: 'Add Product', drawerItemStyle: { display: 'none' } }} 
       />
-
-      {/* 4. หน้าคู่มือระบบและประวัติผู้พัฒนา (Explore) */}
       <Drawer.Screen 
-        name="explore" 
-        options={{ drawerLabel: 'ℹ️  How it Works / Profile', title: 'System Guide' }} 
+        name="edit" 
+        options={{ title: 'Edit Product', drawerItemStyle: { display: 'none' } }} 
       />
     </Drawer>
   );
