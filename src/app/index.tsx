@@ -1,65 +1,41 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_BASE_URL } from '../constants/api';
 
-const PRODUCTS_URL = 'https://raw.githubusercontent.com/Nichakamon15948/ming-optic-app/refs/heads/main/products.json';
+// ⚠️ ชี้ URL ไปที่เซิร์ฟเวอร์ Backend ของเราที่รันอยู่พอร์ต 3000
+const API_URL = `${API_BASE_URL}/products`;
 
 export default function Index() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [products, setProducts] = useState([]);
   const [cartCount, setCartCount] = useState(0);
+  const [search, setSearch] = useState('');
   
   const isAdmin = params.admin === 'true';
-  const newProductParam = params.newProduct ? JSON.parse(decodeURIComponent(params.newProduct)) : null;
-  const updatedProductParam = params.updatedProduct ? JSON.parse(decodeURIComponent(params.updatedProduct)) : null;
+
+  // ฟังก์ชันโหลดข้อมูลสินค้าจาก Backend (Database)
+  const loadProducts = async (searchQuery = '') => {
+    try {
+      let url = API_URL;
+      if (searchQuery) {
+        url += `?search=${searchQuery}`;
+      }
+      const response = await fetch(url);
+      const data = await response.json();
+      setProducts(data); // นำข้อมูลจากฐานข้อมูลมาแสดงผล
+    } catch (error) {
+      console.error("Error loading products:", error);
+      Alert.alert("Error", "ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณาตรวจสอบว่ารัน server.js หรือยัง");
+    }
+  };
 
   useEffect(() => {
-    async function loadProducts() {
-      try {
-        const response = await fetch(PRODUCTS_URL);
-        const githubData = await response.json();
-        
-        let localProducts = [];
-        try {
-          const saved = localStorage.getItem('ming_local_products');
-          if (saved) {
-            localProducts = JSON.parse(saved);
-          }
-        } catch (e) {
-          console.log("Local storage not available");
-        }
-
-        let combinedProducts = [...localProducts, ...githubData];
-
-        if (newProductParam) {
-          const exists = combinedProducts.some(item => item.id === newProductParam.id);
-          if (!exists) {
-            combinedProducts = [newProductParam, ...combinedProducts];
-          }
-        }
-
-        if (updatedProductParam) {
-          combinedProducts = combinedProducts.map(item => 
-            item.id === updatedProductParam.id ? updatedProductParam : item
-          );
-        }
-
-        const uniqueProducts = Array.from(new Map(combinedProducts.map(item => [item.id, item])).values());
-
-        try {
-          const customItems = uniqueProducts.filter(item => typeof item.id === 'string' || (typeof item.id === 'number' && item.id > 1000));
-          localStorage.setItem('ming_local_products', JSON.stringify(customItems));
-        } catch (e) {}
-
-        setProducts(uniqueProducts);
-      } catch (error) {
-        console.error("Error loading products:", error);
-      }
-    }
+    // ดึงข้อมูลสินค้าทุกครั้งที่เปิดหน้า หรือกลับมาจากหน้า Add/Edit
     loadProducts();
 
-    // โหลดจำนวนสินค้าในตะกร้ามาแสดงที่ไอคอน
+    // โหลดจำนวนสินค้าในตะกร้ามาแสดงที่ไอคอน (ตะกร้ายังใช้ localStorage ได้ปกติ)
     try {
       const cartSaved = localStorage.getItem('ming_cart');
       if (cartSaved) {
@@ -67,10 +43,12 @@ export default function Index() {
         setCartCount(cartItems.length);
       }
     } catch (e) {}
-  }, [params.newProduct, params.updatedProduct]);
+  }, [params.newProduct, params.updatedProduct, params.admin, params.refresh]);
 
-  const [search, setSearch] = useState('');
-  const filteredProducts = search === '' ? products : products.filter(item => item.name.toLowerCase().includes(search.toLowerCase()));
+  // ฟังก์ชันกดค้นหาสินค้า
+  const handleSearch = () => {
+    loadProducts(search);
+  };
 
   // ฟังก์ชันกดเพิ่มสินค้าลงตะกร้า
   const handleAddToCart = (item) => {
@@ -94,23 +72,33 @@ export default function Index() {
     }
   };
 
-  const handleDelete = (id) => {
-    Alert.alert("Confirm Delete", "Are you sure you want to delete this product?", [
-      { text: "Cancel", style: "cancel" },
-      { 
-        text: "Delete", 
-        style: "destructive", 
-        onPress: () => {
-          const updated = products.filter(item => item.id !== id);
-          setProducts(updated);
-          try {
-            const customItems = updated.filter(item => typeof item.id === 'string' || (typeof item.id === 'number' && item.id > 1000));
-            localStorage.setItem('ming_local_products', JSON.stringify(customItems));
-          } catch (e) {}
-          Alert.alert("Deleted", "Product has been removed successfully.");
-        } 
+  // ฟังก์ชันลบสินค้า ส่งคำสั่งไปลบที่ Backend
+  const handleDelete = async (id) => {
+    // บน Web ใช้ window.confirm เพราะ Alert.alert แบบมีปุ่มใช้ไม่ได้
+    const confirmed = typeof window !== 'undefined' && window.confirm
+      ? window.confirm('Are you sure you want to delete this product?')
+      : true; // บน native จะใช้ Alert.alert แทน
+
+    if (!confirmed) return;
+
+    try {
+      console.log('Deleting product:', id);
+      const response = await fetch(`${API_URL}/${id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      console.log('Delete response:', data);
+      
+      if (response.ok && data.success) {
+        Alert.alert("Deleted", "Product has been removed successfully.");
+        loadProducts(); // โหลดข้อมูลใหม่หลังจากลบเสร็จ
+      } else {
+        Alert.alert("Error", data.error || "Failed to delete product.");
       }
-    ]);
+    } catch (error) {
+      console.error("Delete error:", error);
+      Alert.alert("Error", "Cannot connect to server. Make sure server.js is running.");
+    }
   };
 
   return (
@@ -125,7 +113,7 @@ export default function Index() {
         </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          {/* ปุ่มตะกร้าสินค้า (โชว์ตลอดเวลา) */}
+          {/* ปุ่มตะกร้าสินค้า */}
           <Pressable style={styles.cartBtn} onPress={() => router.push('/cart')}>
             <Text style={styles.cartBtnText}>🛒 Cart ({cartCount})</Text>
           </Pressable>
@@ -160,14 +148,14 @@ export default function Index() {
           value={search} 
           onChangeText={setSearch} 
         />
-        <TouchableOpacity style={styles.searchButton}>
+        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
           <Text style={{color: 'white', fontWeight: '600'}}>Search</Text>
         </TouchableOpacity>
       </View>
 
       {/* Product List */}
       <ScrollView style={{ flex: 1 }}>
-        {filteredProducts.map((item, index) => (
+        {products.map((item, index) => (
           <View key={`${item.id}-${index}`} style={styles.card}>
             <Image source={{ uri: item.image || item.image_url }} style={styles.glassImage} />
             <View style={{ marginLeft: 15, flex: 1 }}>
@@ -202,6 +190,11 @@ export default function Index() {
             )}
           </View>
         ))}
+        {products.length === 0 && (
+          <Text style={{textAlign: 'center', marginTop: 50, color: '#999'}}>
+            ยังไม่มีสินค้าในระบบ หรือหาไม่พบ
+          </Text>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

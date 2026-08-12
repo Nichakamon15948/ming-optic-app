@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { API_BASE_URL } from '../constants/api';
 
 export default function LoginScreen() {
     const [username, setUsername] = useState('');
@@ -9,8 +10,8 @@ export default function LoginScreen() {
 
     const handleLogin = async () => {
         try {
-            // แก้ไขเส้นทางให้วิ่งมาที่เซิร์ฟเวอร์ในเครื่องเรา (localhost)
-            const response = await fetch('http://localhost:3008/api/login', {
+            // แก้ไขเส้นทางให้วิ่งมาที่เซิร์ฟเวอร์ในเครื่องเราที่พอร์ต 3000
+            const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password }),
