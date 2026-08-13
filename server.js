@@ -36,7 +36,7 @@ const db = mysql.createConnection({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '', 
-  database: process.env.DB_DATABASE || 'ip_std6730202173',
+  database: process.env.DB_NAME || process.env.DB_DATABASE || 'ip_std6730202173',
   port: process.env.DB_PORT || 3306
 });
 
@@ -45,7 +45,7 @@ db.connect((err) => {
     console.error('Error connecting to database:', err);
     return;
   }
-  console.log(`Connected to MySQL database: ${process.env.DB_DATABASE || 'ip_std6730202173'}`);
+  console.log(`Connected to MySQL database: ${process.env.DB_NAME || process.env.DB_DATABASE || 'ip_std6730202173'}`);
 });
 
 // 1. ระบบ Login (POST /login)
