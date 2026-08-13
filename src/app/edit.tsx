@@ -23,10 +23,10 @@ export default function EditProductScreen() {
       try {
         const item = JSON.parse(decodeURIComponent(params.product as string));
         setProductId(item.id);
-        setName(item.productname || item.name || '');
+        setName(item.name || '');
         setPrice(item.price || '');
-        setStock(String(item.detail || item.stock || ''));
-        setImage(item.img || item.image || item.image_url || '');
+        setStock(String(item.stock || ''));
+        setImage(item.image || item.image_url || '');
       } catch (e) { console.error(e); }
     }
   }, [params.product]);

@@ -115,8 +115,8 @@ app.get('/api/products', (req, res) => {
   let queryParams = [];
 
   if (q) {
-    sql += ' WHERE productname LIKE ?';
-    queryParams.push(`%${q}%`);
+    sql += ' WHERE name LIKE ? OR productname LIKE ?';
+    queryParams.push(`%${q}%`, `%${q}%`);
   }
 
   sql += ' LIMIT ? OFFSET ?';
@@ -133,19 +133,15 @@ app.get('/api/products', (req, res) => {
 
 // 3. ระบบเพิ่มข้อมูล Add (POST /api/products)
 app.post('/api/products', (req, res) => {
-  const id = req.body.id;
-  const productname = req.body.productname || req.body.name;
-  const detail = req.body.detail || req.body.stock || '';
-  const price = req.body.price;
-  const img = req.body.img || req.body.image;
+  const { id, name, stock, price, image } = req.body;
 
-  if (!id || !productname || !price || !img) {
-    return res.status(400).json({ success: false, error: 'All fields (id, name, price, image) are required.' });
+  if (!id || !name || !stock || !price || !image) {
+    return res.status(400).json({ success: false, error: 'All fields are required.' });
   }
 
-  const sql = 'INSERT INTO products (id, productname, detail, price, img) VALUES (?, ?, ?, ?, ?)';
+  const sql = 'INSERT INTO products (id, name, stock, price, image) VALUES (?, ?, ?, ?, ?)';
   
-  db.query(sql, [id, productname, String(detail), price, img], (err, results) => {
+  db.query(sql, [id, name, stock, price, image], (err, results) => {
     if (err) {
       console.error('Insert error:', err.message);
       if (err.code === 'ER_DUP_ENTRY') {
@@ -160,18 +156,15 @@ app.post('/api/products', (req, res) => {
 // 4. ระบบแก้ไขข้อมูล Edit (PUT /api/products/:id)
 app.put('/api/products/:id', (req, res) => {
   const productId = req.params.id;
-  const productname = req.body.productname || req.body.name;
-  const detail = req.body.detail || req.body.stock || '';
-  const price = req.body.price;
-  const img = req.body.img || req.body.image;
+  const { name, stock, price, image } = req.body;
 
-  if (!productname || !price || !img) {
-    return res.status(400).json({ success: false, error: 'All fields (name, price, image) are required.' });
+  if (!name || !price || !image) {
+    return res.status(400).json({ success: false, error: 'All fields are required.' });
   }
 
-  const sql = 'UPDATE products SET productname = ?, detail = ?, price = ?, img = ? WHERE id = ?';
+  const sql = 'UPDATE products SET name = ?, stock = ?, price = ?, image = ? WHERE id = ?';
   
-  db.query(sql, [productname, String(detail), price, img, productId], (err, results) => {
+  db.query(sql, [name, stock, price, image, productId], (err, results) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ success: true, message: 'แก้ไขข้อมูลสินค้าเรียบร้อยแล้ว' });
   });

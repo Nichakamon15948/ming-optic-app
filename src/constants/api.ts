@@ -5,7 +5,7 @@ import { Platform } from 'react-native';
 // - Web / iOS Simulator: ใช้ localhost ได้ปกติ
 // - เครื่องจริง (มือถือ): ใช้ IP จริงของคอมพิวเตอร์ที่รัน server
 // ปรับค่าตรงนี้เพื่อเลือกว่าจะต่อฐานข้อมูลในเครื่อง (Local) หรือบนคลาวด์ (VPS)
-const USE_VPS = true; 
+const USE_VPS = false; // false = XAMPP ในเครื่อง / true = เซิร์ฟเวอร์จริง VPS
 
 const getBaseUrl = () => {
     if (USE_VPS) {

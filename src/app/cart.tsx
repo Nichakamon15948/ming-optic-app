@@ -112,9 +112,9 @@ export default function CartScreen() {
                 const itemTotal = getUnitPrice(item) * item.quantity;
                 return (
                   <View key={`${item.id}-${index}`} style={styles.cartCard}>
-                    <Image source={{ uri: item.img || item.image || item.image_url }} style={styles.itemImage} />
+                    <Image source={{ uri: item.image || item.image_url }} style={styles.itemImage} />
                     <View style={styles.itemInfo}>
-                      <Text style={styles.itemName} numberOfLines={2}>{item.productname || item.name}</Text>
+                      <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
                       <Text style={styles.unitPrice}>{item.price} / unit</Text>
                       {/* Qty controls */}
                       <View style={styles.qtyRow}>

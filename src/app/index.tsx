@@ -189,7 +189,7 @@ export default function Index() {
                 {/* Product Image */}
                 <View style={styles.imageContainer}>
                   <Image
-                    source={{ uri: item.img || item.image || item.image_url }}
+                    source={{ uri: item.image || item.image_url }}
                     style={styles.productImage}
                     resizeMode="cover"
                   />
@@ -202,12 +202,12 @@ export default function Index() {
 
                 {/* Product Info */}
                 <View style={styles.cardBody}>
-                  <Text style={styles.productName} numberOfLines={2}>{item.productname || item.name}</Text>
+                  <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
 
                   <View style={styles.stockRow}>
-                    <View style={[styles.stockDot, { backgroundColor: '#10B981' }]} />
-                    <Text style={styles.stockText} numberOfLines={1}>
-                      {item.detail || 'Available'}
+                    <View style={[styles.stockDot, { backgroundColor: Number(item.stock) > 5 ? '#10B981' : Number(item.stock) > 0 ? '#F59E0B' : '#EF4444' }]} />
+                    <Text style={styles.stockText}>
+                      {Number(item.stock) === 0 ? 'Out of stock' : `${item.stock} in stock`}
                     </Text>
                   </View>
 
@@ -216,10 +216,13 @@ export default function Index() {
                   {/* Buttons */}
                   {!isAdmin ? (
                     <TouchableOpacity
-                      style={styles.addToCartBtn}
+                      style={[styles.addToCartBtn, Number(item.stock) === 0 && styles.disabledBtn]}
                       onPress={() => handleAddToCart(item)}
+                      disabled={Number(item.stock) === 0}
                     >
-                      <Text style={styles.addToCartText}>+ Add to Cart</Text>
+                      <Text style={styles.addToCartText}>
+                        {Number(item.stock) === 0 ? 'Out of Stock' : '+ Add to Cart'}
+                      </Text>
                     </TouchableOpacity>
                   ) : (
                     <View style={styles.adminActions}>
