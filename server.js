@@ -48,47 +48,93 @@ db.connect((err) => {
   console.log(`Connected to MySQL database: ${process.env.DB_NAME || process.env.DB_DATABASE || 'ip_std6730202173'}`);
 });
 
-// 1. ระบบ Login (POST /login)
-app.post('/login', (req, res) => {
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'ming_optic_secret_key';
+
+// Middleware สำหรับแกะ JWT Token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ success: false, error: 'Unauthorized: No token provided.' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(403).json({ success: false, error: 'Forbidden: Invalid token.' });
+    }
+    req.user = decoded;
+    next();
+  });
+};
+
+// Middleware สำหรับตรวจสอบสิทธิ์ผู้ดูแลระบบ (Admin)
+const requireAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ success: false, error: 'Forbidden: Admins only.' });
+  }
+};
+
+// 1. ระบบ Login (POST /api/login)
+app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const sql = 'SELECT * FROM users WHERE username = ? AND password = ?';
   
   db.query(sql, [username, password], (err, results) => {
     if (err) {
       console.error('Login error:', err);
-      return res.status(500).json({ success: false, message: 'Database error' });
+      return res.status(500).json({ success: false, error: 'Database error' });
     }
     
     if (results.length > 0) {
-      res.json({ success: true, message: 'เข้าสู่ระบบสำเร็จ' });
+      const user = results[0];
+      // สร้าง JWT Token
+      const token = jwt.sign(
+        { id: user.id, username: user.username, role: 'admin' },
+        JWT_SECRET,
+        { expiresIn: '2h' }
+      );
+      res.json({ success: true, message: 'เข้าสู่ระบบสำเร็จ', token });
     } else {
-      res.status(401).json({ success: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+      res.status(401).json({ success: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
   });
 });
 
-// 2. ระบบดึงข้อมูลทั้งหมด & ค้นหา Search (GET /products)
-app.get('/products', (req, res) => {
-  const searchQuery = req.query.search;
+// 2. ระบบดึงข้อมูลทั้งหมด & ค้นหา Search (GET /api/products)
+app.get('/api/products', (req, res) => {
+  const q = req.query.q || req.query.search || '';
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 999;
+  const offset = (page - 1) * limit;
+
   let sql = 'SELECT * FROM products';
   let queryParams = [];
 
-  if (searchQuery) {
+  if (q) {
     sql += ' WHERE name LIKE ?';
-    queryParams.push(`%${searchQuery}%`);
+    queryParams.push(`%${q}%`);
   }
 
-  db.query(sql, queryParams, (err, results) => {
-    if (err) return res.status(500).json({ error: err.message });
+  sql += ' LIMIT ? OFFSET ?';
+  const actualParams = [...queryParams, limit, offset];
+
+  db.query(sql, actualParams, (err, results) => {
+    if (err) {
+      console.error('Error fetching products:', err.message);
+      return res.status(500).json({ error: err.message });
+    }
     res.json(results);
   });
 });
 
-// 3. ระบบเพิ่มข้อมูล Add (POST /products) - รองรับการรับค่า id
-app.post('/products', (req, res) => {
+// 3. ระบบเพิ่มข้อมูล Add (POST /api/products)
+app.post('/api/products', (req, res) => {
   const { id, name, stock, price, image } = req.body;
 
-  // Server-side validation
   if (!id || !name || !stock || !price || !image) {
     return res.status(400).json({ success: false, error: 'All fields are required.' });
   }
@@ -98,13 +144,8 @@ app.post('/products', (req, res) => {
   db.query(sql, [id, name, stock, price, image], (err, results) => {
     if (err) {
       console.error('Insert error:', err.message);
-      // Check for duplicate key error
       if (err.code === 'ER_DUP_ENTRY') {
         return res.status(409).json({ success: false, error: `Product ID "${id}" already exists. Please use a different ID.` });
-      }
-      // Check for incorrect data type
-      if (err.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD' || err.code === 'ER_BAD_FIELD_ERROR') {
-        return res.status(400).json({ success: false, error: `Invalid data format. Please check your input values.` });
       }
       return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
@@ -112,8 +153,8 @@ app.post('/products', (req, res) => {
   });
 });
 
-// 4. ระบบแก้ไขข้อมูล Edit (PUT /products/:id)
-app.put('/products/:id', (req, res) => {
+// 4. ระบบแก้ไขข้อมูล Edit (PUT /api/products/:id)
+app.put('/api/products/:id', (req, res) => {
   const productId = req.params.id;
   const { name, stock, price, image } = req.body;
   const sql = 'UPDATE products SET name = ?, stock = ?, price = ?, image = ? WHERE id = ?';
@@ -124,8 +165,8 @@ app.put('/products/:id', (req, res) => {
   });
 });
 
-// 5. ระบบลบข้อมูล Delete (DELETE /products/:id)
-app.delete('/products/:id', (req, res) => {
+// 5. ระบบลบข้อมูล Delete (DELETE /api/products/:id) - จำกัดเฉพาะ Admin ผ่าน JWT
+app.delete('/api/products/:id', authenticateToken, requireAdmin, (req, res) => {
   const productId = req.params.id;
   const sql = 'DELETE FROM products WHERE id = ?';
   
@@ -141,7 +182,8 @@ app.delete('/products/:id', (req, res) => {
   });
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+

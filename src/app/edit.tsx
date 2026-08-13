@@ -1,120 +1,149 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { API_BASE_URL } from '../constants/api';
 
+const C = {
+  bg: '#0F172A', surface: '#1E293B', surface2: '#263548',
+  border: '#334155', gold: '#C9A84C', text: '#F1F5F9', textMuted: '#94A3B8', red: '#EF4444',
+};
+
 export default function EditProductScreen() {
-    const router = useRouter();
-    const params = useLocalSearchParams();
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState('');
+  const [stock, setStock] = useState('');
+  const [image, setImage] = useState('');
+  const [productId, setProductId] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
-    const [stock, setStock] = useState('');
-    const [image, setImage] = useState('');
-    const [productId, setProductId] = useState(null);
+  useEffect(() => {
+    if (params.product) {
+      try {
+        const item = JSON.parse(decodeURIComponent(params.product as string));
+        setProductId(item.id);
+        setName(item.name || '');
+        setPrice(item.price || '');
+        setStock(String(item.stock || ''));
+        setImage(item.image || item.image_url || '');
+      } catch (e) { console.error(e); }
+    }
+  }, [params.product]);
 
-    useEffect(() => {
-        if (params.product) {
-            try {
-                const item = JSON.parse(decodeURIComponent(params.product as string));
-                setProductId(item.id);
-                setName(item.name || '');
-                setPrice(item.price || '');
-                setStock(String(item.stock || ''));
-                setImage(item.image || item.image_url || '');
-            } catch (e) {
-                console.error(e);
-            }
-        }
-    }, [params.product]);
+  const handlePriceChange = (text: string) => {
+    const num = text.replace(/[^0-9]/g, '');
+    setPrice(num === '' ? '' : '฿' + Number(num).toLocaleString());
+  };
 
-    const handlePriceChange = (text: string) => {
-        const numericValue = text.replace(/[^0-9]/g, '');
-        if (numericValue === '') {
-            setPrice('');
-        } else {
-            const formattedPrice = '฿' + Number(numericValue).toLocaleString();
-            setPrice(formattedPrice);
-        }
-    };
+  const handleSaveEdit = async () => {
+    if (!name || !price || !stock || !image) {
+      Alert.alert('Warning', 'Please fill in all fields.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, stock: stock.replace(/[^0-9]/g, ''), price, image })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        Alert.alert('Success ✓', 'Product updated successfully!');
+        router.replace(`/?admin=true&refresh=${Date.now()}`);
+      } else {
+        Alert.alert('Error', data.error || data.message || 'Failed to update product.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'Cannot connect to server.');
+    } finally { setIsSubmitting(false); }
+  };
 
-    const handleSaveEdit = async () => {
-        if (!name || !price || !stock || !image) {
-            Alert.alert('Warning', 'Please fill in all fields completely.');
-            return;
-        }
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.topBar}>
+        <Text style={styles.logo}>MING OPTIC</Text>
+        <Pressable style={styles.backBtn} onPress={() => router.replace('/?admin=true')}>
+          <Text style={styles.backBtnText}>← Back</Text>
+        </Pressable>
+      </View>
 
-        try {
-            // อัปเดตข้อมูลไปยังฐานข้อมูล MySQL
-            const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    name: name,
-                    stock: stock.replace(/[^0-9]/g, ''),
-                    price: price,
-                    image: image
-                })
-            });
+      <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.formWrapper}>
+          <View style={styles.formHeader}>
+            <Text style={styles.formTitle}>✏️ Edit Eyewear</Text>
+            <Text style={styles.formSub}>Update the product details below.</Text>
+            {productId && (
+              <View style={styles.idChip}>
+                <Text style={styles.idChipText}>Editing ID: {productId}</Text>
+              </View>
+            )}
+          </View>
 
-            const data = await response.json();
+          <Text style={styles.label}>PRODUCT NAME</Text>
+          <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={C.textMuted} />
 
-            if (response.ok && data.success) {
-                Alert.alert('Success', 'Product updated successfully!');
-                router.replace(`/?admin=true&refresh=${Date.now()}`);
-            } else {
-                Alert.alert('Error', data.error || data.message || 'Failed to update product.');
-            }
-        } catch (error) {
-            console.error('Edit product error:', error);
-            Alert.alert('Error', 'Cannot connect to server. Make sure the server is running.');
-        }
-    };
+          <Text style={styles.label}>PRICE (฿)</Text>
+          <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} keyboardType="numeric" placeholderTextColor={C.textMuted} />
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.topBar}>
-                <Text style={styles.appTitle}>Ming Optic - Admin</Text>
-                <Pressable onPress={() => router.replace('/?admin=true')} style={styles.backBtn}>
-                    <Text style={styles.backBtnText}>⬅️ Back to Home</Text>
-                </Pressable>
-            </View>
+          <Text style={styles.label}>STOCK (UNITS)</Text>
+          <TextInput style={styles.input} value={stock} onChangeText={t => setStock(t.replace(/[^0-9]/g, ''))} keyboardType="numeric" placeholderTextColor={C.textMuted} />
 
-            <View style={styles.formCard}>
-                <Text style={styles.headerTitle}>✏️ Edit Eyewear</Text>
-                <Text style={styles.subTitle}>Update the details of the glasses below.</Text>
+          <Text style={styles.label}>IMAGE URL</Text>
+          <TextInput style={styles.input} value={image} onChangeText={setImage} placeholderTextColor={C.textMuted} />
 
-                <Text style={styles.label}>Product Name</Text>
-                <TextInput style={styles.input} value={name} onChangeText={setName} />
+          <Pressable
+            style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
+            onPress={handleSaveEdit}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.saveBtnText}>{isSubmitting ? 'Saving...' : '✓ Save Changes'}</Text>
+          </Pressable>
 
-                <Text style={styles.label}>Price</Text>
-                <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} keyboardType="numeric" />
-
-                <Text style={styles.label}>Stock (Units)</Text>
-                <TextInput style={styles.input} value={stock} onChangeText={setStock} keyboardType="numeric" />
-
-                <Text style={styles.label}>Image URL</Text>
-                <TextInput style={styles.input} value={image} onChangeText={setImage} />
-
-                <Pressable style={styles.submitButton} onPress={handleSaveEdit}>
-                    <Text style={styles.submitButtonText}>Save Changes</Text>
-                </Pressable>
-            </View>
-        </SafeAreaView>
-    );
+          <Pressable style={styles.cancelBtn} onPress={() => router.replace('/?admin=true')}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#FDF6F6' },
-    topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, paddingVertical: 15, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F8E1E1' },
-    appTitle: { fontSize: 18, fontWeight: 'bold', color: '#B5838D' },
-    backBtn: { backgroundColor: '#F3F4F6', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 15 },
-    backBtnText: { color: '#4A4A4A', fontSize: 12, fontWeight: '600' },
-    formCard: { backgroundColor: '#FFF', padding: 25, margin: 20, borderRadius: 20, borderWidth: 1, borderColor: '#F8E1E1', maxWidth: 600, alignSelf: 'center', width: '90%', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-    headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#B5838D', marginBottom: 5, textAlign: 'center' },
-    subTitle: { fontSize: 13, color: '#999', textAlign: 'center', marginBottom: 20 },
-    label: { fontSize: 14, fontWeight: '600', color: '#4A4A4A', marginBottom: 5, marginTop: 10 },
-    input: { backgroundColor: '#FFF9F9', borderWidth: 1, borderColor: '#F8E1E1', padding: 12, borderRadius: 12, fontSize: 15, color: '#4A4A4A' },
-    submitButton: { backgroundColor: '#F59E0B', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 25 },
-    submitButtonText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 }
+  container: { flex: 1, backgroundColor: C.bg },
+  topBar: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#0B1628', paddingHorizontal: 24, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  logo: { fontSize: 16, fontWeight: '900', color: C.gold, letterSpacing: 3 },
+  backBtn: {
+    backgroundColor: C.surface2, paddingVertical: 6, paddingHorizontal: 14,
+    borderRadius: 8, borderWidth: 1, borderColor: C.border,
+  },
+  backBtnText: { color: C.textMuted, fontSize: 13, fontWeight: '600' },
+  formWrapper: { maxWidth: 560, alignSelf: 'center', width: '90%', paddingTop: 30 },
+  formHeader: { marginBottom: 28 },
+  formTitle: { color: C.gold, fontSize: 22, fontWeight: '900' },
+  formSub: { color: C.textMuted, fontSize: 13, marginTop: 6 },
+  idChip: {
+    alignSelf: 'flex-start', marginTop: 12,
+    backgroundColor: C.surface2, paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: 20, borderWidth: 1, borderColor: C.border,
+  },
+  idChipText: { color: C.textMuted, fontSize: 12, fontWeight: '600' },
+  label: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 7, marginTop: 18 },
+  input: {
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+    padding: 13, borderRadius: 10, fontSize: 15, color: C.text, outlineStyle: 'none',
+  },
+  saveBtn: {
+    backgroundColor: C.gold, padding: 16, borderRadius: 12,
+    alignItems: 'center', marginTop: 30,
+  },
+  saveBtnDisabled: { backgroundColor: '#5a4a1e' },
+  saveBtnText: { color: '#0F172A', fontWeight: '900', fontSize: 16 },
+  cancelBtn: { alignItems: 'center', marginTop: 14, padding: 8 },
+  cancelBtnText: { color: C.textMuted, fontSize: 14 },
 });
