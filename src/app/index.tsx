@@ -384,8 +384,7 @@ const styles = StyleSheet.create({
   productImage: { width: '100%', height: '100%' },
   imageOverlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
-    background: 'linear-gradient(transparent, rgba(15,23,42,0.8))',
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(15,23,42,0.3)', // ใช้สีทึบจางๆ แทนเพื่อไม่ให้เกิด error บน Native
   },
   idBadge: {
     position: 'absolute', top: 10, left: 10,
