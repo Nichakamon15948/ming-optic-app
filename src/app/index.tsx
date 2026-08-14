@@ -5,6 +5,21 @@ import { API_BASE_URL } from '../constants/api';
 
 const API_URL = `${API_BASE_URL}/products`;
 
+// ── COLOR PALETTE ──
+const C = {
+  bg: '#0F172A',
+  surface: '#1E293B',
+  surface2: '#263548',
+  border: '#334155',
+  gold: '#C9A84C',
+  goldLight: '#E2C97E',
+  text: '#F1F5F9',
+  textMuted: '#94A3B8',
+  green: '#10B981',
+  amber: '#F59E0B',
+  red: '#EF4444',
+};
+
 export default function Index() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -14,6 +29,7 @@ export default function Index() {
   const [products, setProducts] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
   const isAdmin = params.admin === 'true';
 
   const loadProducts = async (searchQuery = '') => {
@@ -40,10 +56,7 @@ export default function Index() {
   }, [params.newProduct, params.updatedProduct, params.admin, params.refresh]);
 
   const handleSearch = () => loadProducts(search);
-
-  const handleKeyPress = (e) => {
-    if (e.nativeEvent.key === 'Enter') handleSearch();
-  };
+  const handleKeyPress = (e) => { if (e.nativeEvent.key === 'Enter') handleSearch(); };
 
   const handleAddToCart = (item) => {
     try {
@@ -55,12 +68,10 @@ export default function Index() {
       const existingIndex = cartItems.findIndex(ci => ci.id === item.id);
       if (existingIndex !== -1) {
         const currentQty = Number(cartItems[existingIndex].quantity) || 1;
-        if (currentQty >= maxStock) { Alert.alert('Stock Limit Reached', `Only ${maxStock} unit(s) available.`); return; }
+        if (currentQty >= maxStock) { Alert.alert('Stock Limit', `Only ${maxStock} available.`); return; }
         cartItems[existingIndex].quantity = currentQty + 1;
-        Alert.alert('Updated', `"${item.name}" qty: ${cartItems[existingIndex].quantity} 🛒`);
       } else {
         cartItems.push({ ...item, quantity: 1 });
-        Alert.alert('Added to Cart', `"${item.name}" added! 🛒`);
       }
       localStorage.setItem('ming_cart', JSON.stringify(cartItems));
       setCartCount(cartItems.reduce((sum, ci) => sum + (Number(ci.quantity) || 1), 0));
@@ -76,13 +87,10 @@ export default function Index() {
       const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
       const response = await fetch(`${API_URL}/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        Alert.alert('Deleted', 'Product removed successfully.');
         loadProducts();
       } else {
         Alert.alert('Error', data.error || 'Failed to delete.');
@@ -95,48 +103,176 @@ export default function Index() {
     return s.startsWith('P') ? s : `P${String(id).padStart(3, '0')}`;
   };
 
-  // Responsive card width
-  const getCardWidth = () => {
-    if (isMobile) return '100%';
-    if (width < 1024) return '48%';
-    return '31%';
-  };
+  // ────────────────────────────────────────────
+  // MOBILE LAYOUT
+  // ────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <SafeAreaView style={m.container}>
+        <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
-
-      {/* ── NAV BAR ── */}
-      <View style={[styles.navbar, isMobile && styles.navbarMobile]}>
-        {/* Top row: Logo + Actions */}
-        <View style={styles.navTopRow}>
-          <Text style={[styles.logo, isMobile && styles.logoMobile]}>MING OPTIC</Text>
-          <View style={styles.navActions}>
-            <Pressable style={styles.cartBadgeBtn} onPress={() => router.push('/cart')}>
-              <Text style={styles.cartIcon}>🛒</Text>
+        {/* ── Mobile Nav ── */}
+        <View style={m.nav}>
+          <Text style={m.navLogo}>MING OPTIC</Text>
+          <View style={m.navRight}>
+            <Pressable onPress={() => setShowSearch(!showSearch)}>
+              <Text style={m.navIcon}>🔍</Text>
+            </Pressable>
+            <Pressable style={m.cartBtn} onPress={() => router.push('/cart')}>
+              <Text style={m.navIcon}>🛒</Text>
               {cartCount > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{cartCount}</Text>
-                </View>
+                <View style={m.badge}><Text style={m.badgeText}>{cartCount}</Text></View>
               )}
             </Pressable>
             {!isAdmin ? (
-              <Pressable style={styles.loginBtn} onPress={() => router.push('/login')}>
-                <Text style={styles.loginBtnText}>🔐 Admin</Text>
+              <Pressable style={m.adminBtn} onPress={() => router.push('/login')}>
+                <Text style={m.adminBtnText}>Admin</Text>
               </Pressable>
             ) : (
-              <Pressable style={styles.logoutBtn} onPress={() => router.replace('/')}>
-                <Text style={styles.logoutBtnText}>🚪 Logout</Text>
+              <Pressable style={m.logoutBtn} onPress={() => router.replace('/')}>
+                <Text style={m.logoutBtnText}>Logout</Text>
               </Pressable>
             )}
           </View>
         </View>
 
-        {/* Search bar - full width on mobile, inline on desktop */}
-        <View style={[styles.navSearch, isMobile && styles.navSearchMobile]}>
-          <Text style={styles.searchIcon}>🔍</Text>
+        {/* ── Search Bar (toggle) ── */}
+        {showSearch && (
+          <View style={m.searchBar}>
+            <TextInput
+              style={m.searchInput}
+              placeholder="Search glasses..."
+              placeholderTextColor="#64748B"
+              value={search}
+              onChangeText={setSearch}
+              onKeyPress={handleKeyPress}
+              onSubmitEditing={handleSearch}
+              autoFocus
+            />
+            <TouchableOpacity style={m.searchBtn} onPress={handleSearch}>
+              <Text style={m.searchBtnText}>Search</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <ScrollView showsVerticalScrollIndicator={false}>
+
+          {/* ── Hero (compact) ── */}
+          {!isAdmin && (
+            <View style={m.hero}>
+              <Text style={m.heroEyebrow}>✦ PREMIUM EYEWEAR</Text>
+              <Text style={m.heroTitle}>Discover Your Perfect Vision</Text>
+              <Text style={m.heroSub}>Handpicked frames for every style</Text>
+            </View>
+          )}
+
+          {/* ── Admin Panel ── */}
+          {isAdmin && (
+            <View style={m.adminPanel}>
+              <Text style={m.adminPanelTitle}>👑 Admin Dashboard</Text>
+              <Pressable style={m.addProductBtn} onPress={() => router.push('/add')}>
+                <Text style={m.addProductBtnText}>＋ Add</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* ── Section Header ── */}
+          <View style={m.sectionHeader}>
+            <Text style={m.sectionTitle}>
+              {search ? `"${search}"` : isAdmin ? 'All Products' : 'Our Collection'}
+            </Text>
+            <Text style={m.sectionCount}>{products.length} items</Text>
+          </View>
+
+          {/* ── Product Grid (2 columns) ── */}
+          {products.length === 0 ? (
+            <View style={m.emptyState}>
+              <Text style={{ fontSize: 40, marginBottom: 10 }}>👓</Text>
+              <Text style={{ color: C.textMuted, fontSize: 14 }}>No products found</Text>
+              {search ? (
+                <TouchableOpacity style={m.clearBtn} onPress={() => { setSearch(''); loadProducts(); }}>
+                  <Text style={{ color: C.gold, fontSize: 13 }}>Clear Search</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : (
+            <View style={m.grid}>
+              {products.map((item, index) => (
+                <View key={`${item.id}-${index}`} style={m.card}>
+                  {/* Image */}
+                  <View style={m.imgWrap}>
+                    <Image
+                      source={{ uri: item.image || item.image_url }}
+                      style={m.img}
+                      resizeMode="cover"
+                    />
+                    <View style={m.idTag}>
+                      <Text style={m.idTagText}>{formatId(item.id)}</Text>
+                    </View>
+                  </View>
+
+                  {/* Info */}
+                  <View style={m.cardInfo}>
+                    <Text style={m.cardName} numberOfLines={1}>{item.name}</Text>
+                    <View style={m.stockRow}>
+                      <View style={[m.stockDot, {
+                        backgroundColor: Number(item.stock) > 5 ? C.green : Number(item.stock) > 0 ? C.amber : C.red
+                      }]} />
+                      <Text style={m.stockLabel}>
+                        {Number(item.stock) === 0 ? 'Out of stock' : `${item.stock} in stock`}
+                      </Text>
+                    </View>
+                    <Text style={m.price}>฿{item.price}</Text>
+
+                    {/* Action */}
+                    {!isAdmin ? (
+                      <TouchableOpacity
+                        style={[m.cartAddBtn, Number(item.stock) === 0 && m.cartAddBtnDisabled]}
+                        onPress={() => handleAddToCart(item)}
+                        disabled={Number(item.stock) === 0}
+                      >
+                        <Text style={m.cartAddBtnText}>
+                          {Number(item.stock) === 0 ? 'Sold Out' : '🛒 Add'}
+                        </Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={m.adminRow}>
+                        <TouchableOpacity
+                          style={m.editBtnM}
+                          onPress={() => router.push(`/edit?product=${encodeURIComponent(JSON.stringify(item))}`)}
+                        >
+                          <Text style={m.editBtnMText}>✏️</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={m.deleteBtnM} onPress={() => handleDelete(item.id)}>
+                          <Text style={m.deleteBtnMText}>🗑️</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+          <View style={{ height: 30 }} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ────────────────────────────────────────────
+  // DESKTOP LAYOUT
+  // ────────────────────────────────────────────
+  return (
+    <SafeAreaView style={d.container}>
+      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+
+      {/* ── Desktop Nav ── */}
+      <View style={d.nav}>
+        <Text style={d.navLogo}>MING OPTIC</Text>
+        <View style={d.navSearch}>
+          <Text style={{ fontSize: 14, marginRight: 6 }}>🔍</Text>
           <TextInput
-            style={styles.navSearchInput}
+            style={d.navSearchInput}
             placeholder="Search glasses..."
             placeholderTextColor="#64748B"
             value={search}
@@ -144,113 +280,116 @@ export default function Index() {
             onKeyPress={handleKeyPress}
             onSubmitEditing={handleSearch}
           />
-          <TouchableOpacity style={styles.navSearchBtn} onPress={handleSearch}>
-            <Text style={styles.navSearchBtnText}>Search</Text>
+          <TouchableOpacity style={d.navSearchBtn} onPress={handleSearch}>
+            <Text style={d.navSearchBtnText}>Search</Text>
           </TouchableOpacity>
+        </View>
+        <View style={d.navActions}>
+          <Pressable style={d.cartBadgeBtn} onPress={() => router.push('/cart')}>
+            <Text style={{ fontSize: 22 }}>🛒</Text>
+            {cartCount > 0 && (
+              <View style={d.badge}><Text style={d.badgeText}>{cartCount}</Text></View>
+            )}
+          </Pressable>
+          {!isAdmin ? (
+            <Pressable style={d.loginBtn} onPress={() => router.push('/login')}>
+              <Text style={d.loginBtnText}>🔐 Admin</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={d.logoutBtn} onPress={() => router.replace('/')}>
+              <Text style={d.logoutBtnText}>🚪 Logout</Text>
+            </Pressable>
+          )}
         </View>
       </View>
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-
-        {/* ── HERO BANNER ── */}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Hero */}
         {!isAdmin && (
-          <View style={[styles.hero, isMobile && styles.heroMobile]}>
-            <Text style={styles.heroEyebrow}>✦ PREMIUM EYEWEAR COLLECTION</Text>
-            <Text style={[styles.heroTitle, isMobile && styles.heroTitleMobile]}>
-              Discover Your{'\n'}Perfect Vision
-            </Text>
-            <Text style={[styles.heroSub, isMobile && styles.heroSubMobile]}>
-              Handpicked frames for every style & occasion
-            </Text>
+          <View style={d.hero}>
+            <Text style={d.heroEyebrow}>✦ PREMIUM EYEWEAR COLLECTION</Text>
+            <Text style={d.heroTitle}>Discover Your{'\n'}Perfect Vision</Text>
+            <Text style={d.heroSub}>Handpicked frames for every style & occasion</Text>
           </View>
         )}
 
-        {/* ── ADMIN PANEL ── */}
+        {/* Admin Panel */}
         {isAdmin && (
-          <View style={[styles.adminPanel, isMobile && styles.adminPanelMobile]}>
+          <View style={d.adminPanel}>
             <View>
-              <Text style={styles.adminTitle}>👑 Admin Dashboard</Text>
-              <Text style={styles.adminSub}>Manage your product catalog</Text>
+              <Text style={d.adminTitle}>👑 Admin Dashboard</Text>
+              <Text style={d.adminSub}>Manage your product catalog</Text>
             </View>
-            <Pressable style={styles.addBtn} onPress={() => router.push('/add')}>
-              <Text style={styles.addBtnText}>＋ Add Product</Text>
+            <Pressable style={d.addBtn} onPress={() => router.push('/add')}>
+              <Text style={d.addBtnText}>＋ Add Product</Text>
             </Pressable>
           </View>
         )}
 
-        {/* ── SECTION HEADER ── */}
-        <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
-          <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
+        {/* Section Header */}
+        <View style={d.sectionHeader}>
+          <Text style={d.sectionTitle}>
             {search ? `Results for "${search}"` : isAdmin ? 'All Products' : 'Our Collection'}
           </Text>
-          <Text style={styles.sectionCount}>{products.length} items</Text>
+          <Text style={d.sectionCount}>{products.length} items</Text>
         </View>
 
-        {/* ── PRODUCT GRID ── */}
+        {/* Product Grid */}
         {products.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>👓</Text>
-            <Text style={styles.emptyText}>No products found</Text>
+          <View style={{ alignItems: 'center', paddingVertical: 80 }}>
+            <Text style={{ fontSize: 56, marginBottom: 16 }}>👓</Text>
+            <Text style={{ color: C.textMuted, fontSize: 16, marginBottom: 16 }}>No products found</Text>
             {search ? (
-              <TouchableOpacity style={styles.clearBtn} onPress={() => { setSearch(''); loadProducts(); }}>
-                <Text style={styles.clearBtnText}>Clear Search</Text>
+              <TouchableOpacity
+                style={{ borderColor: C.gold, borderWidth: 1, paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20 }}
+                onPress={() => { setSearch(''); loadProducts(); }}
+              >
+                <Text style={{ color: C.gold, fontWeight: '600' }}>Clear Search</Text>
               </TouchableOpacity>
             ) : null}
           </View>
         ) : (
-          <View style={[styles.grid, isMobile && styles.gridMobile]}>
+          <View style={d.grid}>
             {products.map((item, index) => (
-              <View key={`${item.id}-${index}`} style={[styles.card, { width: getCardWidth() }]}>
-                {/* Product Image */}
-                <View style={[styles.imageContainer, isMobile && styles.imageContainerMobile]}>
-                  <Image
-                    source={{ uri: item.image || item.image_url }}
-                    style={styles.productImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.imageOverlay} />
-                  {/* ID Badge on image */}
-                  <View style={styles.idBadge}>
-                    <Text style={styles.idBadgeText}>{formatId(item.id)}</Text>
+              <View key={`${item.id}-${index}`} style={d.card}>
+                <View style={d.imgContainer}>
+                  <Image source={{ uri: item.image || item.image_url }} style={d.productImage} resizeMode="cover" />
+                  <View style={d.imgOverlay} />
+                  <View style={d.idBadge}>
+                    <Text style={d.idBadgeText}>{formatId(item.id)}</Text>
                   </View>
                 </View>
-
-                {/* Product Info */}
-                <View style={[styles.cardBody, isMobile && styles.cardBodyMobile]}>
-                  <Text style={[styles.productName, isMobile && styles.productNameMobile]} numberOfLines={2}>{item.name}</Text>
-
-                  <View style={styles.stockRow}>
-                    <View style={[styles.stockDot, { backgroundColor: Number(item.stock) > 5 ? '#10B981' : Number(item.stock) > 0 ? '#F59E0B' : '#EF4444' }]} />
-                    <Text style={styles.stockText}>
+                <View style={d.cardBody}>
+                  <Text style={d.productName} numberOfLines={2}>{item.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <View style={[{ width: 7, height: 7, borderRadius: 4 }, {
+                      backgroundColor: Number(item.stock) > 5 ? C.green : Number(item.stock) > 0 ? C.amber : C.red
+                    }]} />
+                    <Text style={{ color: C.textMuted, fontSize: 12 }}>
                       {Number(item.stock) === 0 ? 'Out of stock' : `${item.stock} in stock`}
                     </Text>
                   </View>
-
-                  <Text style={[styles.priceText, isMobile && styles.priceTextMobile]}>
-                    ฿{item.price}
-                  </Text>
-
-                  {/* Buttons */}
+                  <Text style={d.priceText}>฿{item.price}</Text>
                   {!isAdmin ? (
                     <TouchableOpacity
-                      style={[styles.addToCartBtn, Number(item.stock) === 0 && styles.disabledBtn]}
+                      style={[d.addToCartBtn, Number(item.stock) === 0 && d.disabledBtn]}
                       onPress={() => handleAddToCart(item)}
                       disabled={Number(item.stock) === 0}
                     >
-                      <Text style={styles.addToCartText}>
+                      <Text style={d.addToCartText}>
                         {Number(item.stock) === 0 ? 'Out of Stock' : '+ Add to Cart'}
                       </Text>
                     </TouchableOpacity>
                   ) : (
-                    <View style={styles.adminActions}>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TouchableOpacity
-                        style={styles.editBtn}
+                        style={d.editBtn}
                         onPress={() => router.push(`/edit?product=${encodeURIComponent(JSON.stringify(item))}`)}
                       >
-                        <Text style={styles.editBtnText}>✏️ Edit</Text>
+                        <Text style={d.editBtnText}>✏️ Edit</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                        <Text style={styles.deleteBtnText}>🗑️</Text>
+                      <TouchableOpacity style={d.deleteBtn} onPress={() => handleDelete(item.id)}>
+                        <Text style={{ fontSize: 15 }}>🗑️</Text>
                       </TouchableOpacity>
                     </View>
                   )}
@@ -259,76 +398,170 @@ export default function Index() {
             ))}
           </View>
         )}
-
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ── COLOR PALETTE ──
-const C = {
-  bg: '#0F172A',        // Dark navy background
-  surface: '#1E293B',   // Card surface
-  surface2: '#263548',  // Elevated surface
-  border: '#334155',    // Border
-  gold: '#C9A84C',      // Gold accent
-  goldLight: '#E2C97E', // Light gold
-  text: '#F1F5F9',      // Primary text
-  textMuted: '#94A3B8', // Secondary text
-  green: '#10B981',
-  amber: '#F59E0B',
-  red: '#EF4444',
-};
-
-const styles = StyleSheet.create({
+// ══════════════════════════════════════
+// MOBILE STYLES (m)
+// ══════════════════════════════════════
+const m = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
-  // ── NAV (Desktop) ──
-  navbar: {
+  // Nav
+  nav: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#0B1628',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: C.border,
+  },
+  navLogo: { fontSize: 16, fontWeight: '900', color: C.gold, letterSpacing: 2 },
+  navRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  navIcon: { fontSize: 20 },
+  cartBtn: { position: 'relative' },
+  badge: {
+    position: 'absolute', top: -6, right: -8,
+    backgroundColor: C.gold, borderRadius: 9,
+    minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { color: '#0F172A', fontSize: 9, fontWeight: '900' },
+  adminBtn: {
+    backgroundColor: C.surface2, paddingVertical: 5, paddingHorizontal: 10,
+    borderRadius: 6, borderWidth: 1, borderColor: C.gold,
+  },
+  adminBtnText: { color: C.gold, fontWeight: '700', fontSize: 11 },
+  logoutBtn: {
+    backgroundColor: '#7f1d1d', paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6,
+  },
+  logoutBtnText: { color: '#fca5a5', fontWeight: '700', fontSize: 11 },
+
+  // Search
+  searchBar: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.surface, marginHorizontal: 12, marginTop: 8,
+    borderRadius: 8, borderWidth: 1, borderColor: C.border,
+    paddingHorizontal: 10, height: 36,
+  },
+  searchInput: { flex: 1, color: C.text, fontSize: 13, outlineStyle: 'none' },
+  searchBtn: { backgroundColor: C.gold, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 6 },
+  searchBtnText: { color: '#0F172A', fontWeight: '700', fontSize: 12 },
+
+  // Hero
+  hero: {
+    paddingHorizontal: 16, paddingVertical: 20,
+    backgroundColor: '#111827',
+    borderBottomWidth: 1, borderBottomColor: C.border,
+    alignItems: 'center',
+  },
+  heroEyebrow: { color: C.gold, fontSize: 9, fontWeight: '700', letterSpacing: 2, marginBottom: 6 },
+  heroTitle: { color: C.text, fontSize: 20, fontWeight: '900', textAlign: 'center', marginBottom: 4 },
+  heroSub: { color: C.textMuted, fontSize: 12, textAlign: 'center' },
+
+  // Admin Panel
+  adminPanel: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    backgroundColor: '#1a2744', marginHorizontal: 12, marginTop: 12,
+    borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#2d4a7a',
+  },
+  adminPanelTitle: { color: C.gold, fontWeight: '800', fontSize: 14 },
+  addProductBtn: { backgroundColor: C.gold, paddingVertical: 7, paddingHorizontal: 14, borderRadius: 8 },
+  addProductBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 13 },
+
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 10,
+  },
+  sectionTitle: { color: C.text, fontSize: 16, fontWeight: '800' },
+  sectionCount: {
+    color: C.textMuted, fontSize: 11, backgroundColor: C.surface,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
+  },
+
+  // Grid - 2 columns
+  grid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    paddingHorizontal: 10, gap: 10,
+    justifyContent: 'space-between',
+  },
+
+  // Card
+  card: {
+    backgroundColor: C.surface, borderRadius: 12, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.border,
+    width: '48%', marginBottom: 2,
+  },
+  imgWrap: { width: '100%', height: 130, position: 'relative' },
+  img: { width: '100%', height: '100%' },
+  idTag: {
+    position: 'absolute', top: 6, left: 6,
+    backgroundColor: 'rgba(15,23,42,0.8)',
+    paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4,
+  },
+  idTagText: { color: C.textMuted, fontSize: 8, fontWeight: '700', letterSpacing: 1 },
+
+  // Card Info
+  cardInfo: { padding: 8 },
+  cardName: { color: C.text, fontSize: 12, fontWeight: '700', marginBottom: 4 },
+  stockRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+  stockDot: { width: 5, height: 5, borderRadius: 3 },
+  stockLabel: { color: C.textMuted, fontSize: 9 },
+  price: { color: C.gold, fontSize: 15, fontWeight: '900', marginBottom: 6 },
+
+  // Cart Add Button
+  cartAddBtn: { backgroundColor: C.gold, paddingVertical: 6, borderRadius: 6, alignItems: 'center' },
+  cartAddBtnDisabled: { backgroundColor: C.surface2 },
+  cartAddBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 11 },
+
+  // Admin buttons
+  adminRow: { flexDirection: 'row', gap: 6 },
+  editBtnM: {
+    flex: 1, backgroundColor: '#1e3a5f', paddingVertical: 6,
+    borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#2563eb',
+  },
+  editBtnMText: { fontSize: 13 },
+  deleteBtnM: {
+    backgroundColor: '#3b0f0f', paddingVertical: 6, paddingHorizontal: 10,
+    borderRadius: 6, alignItems: 'center', borderWidth: 1, borderColor: '#7f1d1d',
+  },
+  deleteBtnMText: { fontSize: 13 },
+
+  // Empty
+  emptyState: { alignItems: 'center', paddingVertical: 60 },
+  clearBtn: {
+    borderColor: C.gold, borderWidth: 1, marginTop: 12,
+    paddingVertical: 6, paddingHorizontal: 16, borderRadius: 16,
+  },
+});
+
+// ══════════════════════════════════════
+// DESKTOP STYLES (d)
+// ══════════════════════════════════════
+const d = StyleSheet.create({
+  container: { flex: 1, backgroundColor: C.bg },
+
+  // Nav
+  nav: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#0B1628',
-    paddingHorizontal: 20, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: C.border,
-    gap: 16,
+    paddingHorizontal: 24, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: C.border, gap: 16,
   },
-  // ── NAV (Mobile) ──
-  navbarMobile: {
-    flexDirection: 'column',
-    paddingHorizontal: 14, paddingVertical: 10,
-    gap: 10,
-  },
-  navTopRow: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', width: '100%',
-  },
-  logo: {
-    fontSize: 18, fontWeight: '900', color: C.gold,
-    letterSpacing: 3,
-  },
-  logoMobile: { fontSize: 16, letterSpacing: 2 },
+  navLogo: { fontSize: 18, fontWeight: '900', color: C.gold, letterSpacing: 3, minWidth: 130 },
   navSearch: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     backgroundColor: C.surface, borderRadius: 10,
     borderWidth: 1, borderColor: C.border,
     paddingHorizontal: 12, height: 40,
   },
-  navSearchMobile: {
-    flex: 0, width: '100%', height: 38,
-  },
-  searchIcon: { fontSize: 14, marginRight: 6 },
-  navSearchInput: {
-    flex: 1, color: C.text, fontSize: 14,
-    outlineStyle: 'none',
-  },
-  navSearchBtn: {
-    backgroundColor: C.gold, paddingVertical: 5,
-    paddingHorizontal: 14, borderRadius: 7,
-  },
+  navSearchInput: { flex: 1, color: C.text, fontSize: 14, outlineStyle: 'none' },
+  navSearchBtn: { backgroundColor: C.gold, paddingVertical: 5, paddingHorizontal: 14, borderRadius: 7 },
   navSearchBtnText: { color: '#0F172A', fontWeight: '700', fontSize: 13 },
   navActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   cartBadgeBtn: { position: 'relative', padding: 6 },
-  cartIcon: { fontSize: 22 },
   badge: {
     position: 'absolute', top: 0, right: 0,
     backgroundColor: C.gold, borderRadius: 10,
@@ -336,103 +569,64 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: '#0F172A', fontSize: 10, fontWeight: '900' },
   loginBtn: {
-    backgroundColor: C.surface2, paddingVertical: 7,
-    paddingHorizontal: 14, borderRadius: 8,
-    borderWidth: 1, borderColor: C.gold,
+    backgroundColor: C.surface2, paddingVertical: 7, paddingHorizontal: 14,
+    borderRadius: 8, borderWidth: 1, borderColor: C.gold,
   },
   loginBtnText: { color: C.gold, fontWeight: '700', fontSize: 13 },
-  logoutBtn: {
-    backgroundColor: '#7f1d1d', paddingVertical: 7,
-    paddingHorizontal: 14, borderRadius: 8,
-  },
+  logoutBtn: { backgroundColor: '#7f1d1d', paddingVertical: 7, paddingHorizontal: 14, borderRadius: 8 },
   logoutBtnText: { color: '#fca5a5', fontWeight: '700', fontSize: 13 },
 
-  // ── HERO (Desktop) ──
+  // Hero
   hero: {
     paddingHorizontal: 30, paddingVertical: 52,
     backgroundColor: '#111827',
-    borderBottomWidth: 1, borderBottomColor: C.border,
-    alignItems: 'center',
-  },
-  // ── HERO (Mobile) ──
-  heroMobile: {
-    paddingHorizontal: 20, paddingVertical: 30,
+    borderBottomWidth: 1, borderBottomColor: C.border, alignItems: 'center',
   },
   heroEyebrow: { color: C.gold, fontSize: 11, fontWeight: '700', letterSpacing: 3, marginBottom: 14 },
-  heroTitle: {
-    color: C.text, fontSize: 38, fontWeight: '900',
-    textAlign: 'center', lineHeight: 46,
-    marginBottom: 12,
-  },
-  heroTitleMobile: {
-    fontSize: 26, lineHeight: 34,
-  },
+  heroTitle: { color: C.text, fontSize: 38, fontWeight: '900', textAlign: 'center', lineHeight: 46, marginBottom: 12 },
   heroSub: { color: C.textMuted, fontSize: 15, textAlign: 'center' },
-  heroSubMobile: { fontSize: 13 },
 
-  // ── ADMIN PANEL ──
+  // Admin Panel
   adminPanel: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: '#1a2744', margin: 20, borderRadius: 14,
     padding: 18, borderWidth: 1, borderColor: '#2d4a7a',
-    maxWidth: 900, alignSelf: 'center', width: '90%',
-  },
-  adminPanelMobile: {
-    flexDirection: 'column', gap: 12, alignItems: 'stretch',
-    margin: 12, padding: 14,
+    maxWidth: 960, alignSelf: 'center', width: '90%',
   },
   adminTitle: { color: C.gold, fontWeight: '800', fontSize: 16 },
   adminSub: { color: C.textMuted, fontSize: 12, marginTop: 3 },
-  addBtn: {
-    backgroundColor: C.gold, paddingVertical: 10,
-    paddingHorizontal: 20, borderRadius: 10, alignItems: 'center',
-  },
+  addBtn: { backgroundColor: C.gold, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
   addBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 14 },
 
-  // ── SECTION HEADER ──
+  // Section Header
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 24, paddingVertical: 16,
     maxWidth: 960, alignSelf: 'center', width: '100%',
   },
-  sectionHeaderMobile: {
-    paddingHorizontal: 16, paddingVertical: 12,
-  },
   sectionTitle: { color: C.text, fontSize: 20, fontWeight: '800' },
-  sectionTitleMobile: { fontSize: 17 },
   sectionCount: {
     color: C.textMuted, fontSize: 13, backgroundColor: C.surface,
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
   },
 
-  // ── GRID (Desktop) ──
+  // Grid
   grid: {
     flexDirection: 'row', flexWrap: 'wrap',
     paddingHorizontal: 16, gap: 16,
     maxWidth: 960, alignSelf: 'center', width: '100%',
-    justifyContent: 'flex-start',
-  },
-  // ── GRID (Mobile) ──
-  gridMobile: {
-    paddingHorizontal: 14, gap: 14,
   },
 
-  // ── CARD ──
+  // Card
   card: {
-    backgroundColor: C.surface,
-    borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1, borderColor: C.border,
-    // shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    backgroundColor: C.surface, borderRadius: 16, overflow: 'hidden',
+    borderWidth: 1, borderColor: C.border, width: '31%',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
-  imageContainer: { width: '100%', height: 180, position: 'relative' },
-  imageContainerMobile: { height: 220 },
+  imgContainer: { width: '100%', height: 180, position: 'relative' },
   productImage: { width: '100%', height: '100%' },
-  imageOverlay: {
+  imgOverlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
     backgroundColor: 'rgba(15,23,42,0.3)',
   },
@@ -445,45 +639,20 @@ const styles = StyleSheet.create({
   idBadgeText: { color: C.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
 
   cardBody: { padding: 14 },
-  cardBodyMobile: { padding: 16 },
   productName: { color: C.text, fontSize: 15, fontWeight: '700', marginBottom: 8, lineHeight: 20 },
-  productNameMobile: { fontSize: 16 },
-
-  stockRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  stockDot: { width: 7, height: 7, borderRadius: 4 },
-  stockText: { color: C.textMuted, fontSize: 12 },
-
   priceText: { color: C.gold, fontSize: 20, fontWeight: '900', marginBottom: 12 },
-  priceTextMobile: { fontSize: 22 },
 
-  addToCartBtn: {
-    backgroundColor: C.gold, paddingVertical: 12,
-    borderRadius: 10, alignItems: 'center',
-  },
+  addToCartBtn: { backgroundColor: C.gold, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   addToCartText: { color: '#0F172A', fontWeight: '800', fontSize: 14 },
   disabledBtn: { backgroundColor: C.surface2, borderColor: C.border, borderWidth: 1 },
 
-  adminActions: { flexDirection: 'row', gap: 8 },
   editBtn: {
     flex: 1, backgroundColor: '#1e3a5f', paddingVertical: 9,
-    borderRadius: 9, alignItems: 'center',
-    borderWidth: 1, borderColor: '#2563eb',
+    borderRadius: 9, alignItems: 'center', borderWidth: 1, borderColor: '#2563eb',
   },
   editBtnText: { color: '#93c5fd', fontWeight: '700', fontSize: 13 },
   deleteBtn: {
     backgroundColor: '#3b0f0f', paddingVertical: 9, paddingHorizontal: 14,
-    borderRadius: 9, alignItems: 'center',
-    borderWidth: 1, borderColor: '#7f1d1d',
+    borderRadius: 9, alignItems: 'center', borderWidth: 1, borderColor: '#7f1d1d',
   },
-  deleteBtnText: { fontSize: 15 },
-
-  // ── EMPTY ──
-  emptyState: { alignItems: 'center', paddingVertical: 80 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyText: { color: C.textMuted, fontSize: 16, marginBottom: 16 },
-  clearBtn: {
-    borderColor: C.gold, borderWidth: 1,
-    paddingVertical: 8, paddingHorizontal: 20, borderRadius: 20,
-  },
-  clearBtnText: { color: C.gold, fontWeight: '600' },
 });
