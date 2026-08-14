@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { API_BASE_URL } from '../constants/api';
 
 const API_URL = `${API_BASE_URL}/products`;
@@ -8,6 +8,9 @@ const API_URL = `${API_BASE_URL}/products`;
 export default function Index() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+
   const [products, setProducts] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState('');
@@ -92,16 +95,45 @@ export default function Index() {
     return s.startsWith('P') ? s : `P${String(id).padStart(3, '0')}`;
   };
 
+  // Responsive card width
+  const getCardWidth = () => {
+    if (isMobile) return '100%';
+    if (width < 1024) return '48%';
+    return '31%';
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
 
       {/* ── NAV BAR ── */}
-      <View style={styles.navbar}>
-        <Text style={styles.logo}>MING OPTIC</Text>
+      <View style={[styles.navbar, isMobile && styles.navbarMobile]}>
+        {/* Top row: Logo + Actions */}
+        <View style={styles.navTopRow}>
+          <Text style={[styles.logo, isMobile && styles.logoMobile]}>MING OPTIC</Text>
+          <View style={styles.navActions}>
+            <Pressable style={styles.cartBadgeBtn} onPress={() => router.push('/cart')}>
+              <Text style={styles.cartIcon}>🛒</Text>
+              {cartCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{cartCount}</Text>
+                </View>
+              )}
+            </Pressable>
+            {!isAdmin ? (
+              <Pressable style={styles.loginBtn} onPress={() => router.push('/login')}>
+                <Text style={styles.loginBtnText}>🔐 Admin</Text>
+              </Pressable>
+            ) : (
+              <Pressable style={styles.logoutBtn} onPress={() => router.replace('/')}>
+                <Text style={styles.logoutBtnText}>🚪 Logout</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
 
-        {/* Search bar inside nav */}
-        <View style={styles.navSearch}>
+        {/* Search bar - full width on mobile, inline on desktop */}
+        <View style={[styles.navSearch, isMobile && styles.navSearchMobile]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={styles.navSearchInput}
@@ -116,43 +148,26 @@ export default function Index() {
             <Text style={styles.navSearchBtnText}>Search</Text>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.navActions}>
-          <Pressable style={styles.cartBadgeBtn} onPress={() => router.push('/cart')}>
-            <Text style={styles.cartIcon}>🛒</Text>
-            {cartCount > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{cartCount}</Text>
-              </View>
-            )}
-          </Pressable>
-          {!isAdmin ? (
-            <Pressable style={styles.loginBtn} onPress={() => router.push('/login')}>
-              <Text style={styles.loginBtnText}>🔐 Admin</Text>
-            </Pressable>
-          ) : (
-            <Pressable style={styles.logoutBtn} onPress={() => router.replace('/')}>
-              <Text style={styles.logoutBtnText}>🚪 Logout</Text>
-            </Pressable>
-          )}
-        </View>
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
         {/* ── HERO BANNER ── */}
         {!isAdmin && (
-          <View style={styles.hero}>
-            <View style={styles.heroOverlay} />
+          <View style={[styles.hero, isMobile && styles.heroMobile]}>
             <Text style={styles.heroEyebrow}>✦ PREMIUM EYEWEAR COLLECTION</Text>
-            <Text style={styles.heroTitle}>Discover Your{'\n'}Perfect Vision</Text>
-            <Text style={styles.heroSub}>Handpicked frames for every style & occasion</Text>
+            <Text style={[styles.heroTitle, isMobile && styles.heroTitleMobile]}>
+              Discover Your{'\n'}Perfect Vision
+            </Text>
+            <Text style={[styles.heroSub, isMobile && styles.heroSubMobile]}>
+              Handpicked frames for every style & occasion
+            </Text>
           </View>
         )}
 
         {/* ── ADMIN PANEL ── */}
         {isAdmin && (
-          <View style={styles.adminPanel}>
+          <View style={[styles.adminPanel, isMobile && styles.adminPanelMobile]}>
             <View>
               <Text style={styles.adminTitle}>👑 Admin Dashboard</Text>
               <Text style={styles.adminSub}>Manage your product catalog</Text>
@@ -164,8 +179,8 @@ export default function Index() {
         )}
 
         {/* ── SECTION HEADER ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
+        <View style={[styles.sectionHeader, isMobile && styles.sectionHeaderMobile]}>
+          <Text style={[styles.sectionTitle, isMobile && styles.sectionTitleMobile]}>
             {search ? `Results for "${search}"` : isAdmin ? 'All Products' : 'Our Collection'}
           </Text>
           <Text style={styles.sectionCount}>{products.length} items</Text>
@@ -183,11 +198,11 @@ export default function Index() {
             ) : null}
           </View>
         ) : (
-          <View style={styles.grid}>
+          <View style={[styles.grid, isMobile && styles.gridMobile]}>
             {products.map((item, index) => (
-              <View key={`${item.id}-${index}`} style={styles.card}>
+              <View key={`${item.id}-${index}`} style={[styles.card, { width: getCardWidth() }]}>
                 {/* Product Image */}
-                <View style={styles.imageContainer}>
+                <View style={[styles.imageContainer, isMobile && styles.imageContainerMobile]}>
                   <Image
                     source={{ uri: item.image || item.image_url }}
                     style={styles.productImage}
@@ -201,8 +216,8 @@ export default function Index() {
                 </View>
 
                 {/* Product Info */}
-                <View style={styles.cardBody}>
-                  <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+                <View style={[styles.cardBody, isMobile && styles.cardBodyMobile]}>
+                  <Text style={[styles.productName, isMobile && styles.productNameMobile]} numberOfLines={2}>{item.name}</Text>
 
                   <View style={styles.stockRow}>
                     <View style={[styles.stockDot, { backgroundColor: Number(item.stock) > 5 ? '#10B981' : Number(item.stock) > 0 ? '#F59E0B' : '#EF4444' }]} />
@@ -211,7 +226,9 @@ export default function Index() {
                     </Text>
                   </View>
 
-                  <Text style={styles.priceText}>{item.price}</Text>
+                  <Text style={[styles.priceText, isMobile && styles.priceTextMobile]}>
+                    ฿{Number(item.price).toLocaleString()}
+                  </Text>
 
                   {/* Buttons */}
                   {!isAdmin ? (
@@ -267,23 +284,37 @@ const C = {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
-  // ── NAV ──
+  // ── NAV (Desktop) ──
   navbar: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#0B1628',
     paddingHorizontal: 20, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border,
-    gap: 12,
+    gap: 16,
+  },
+  // ── NAV (Mobile) ──
+  navbarMobile: {
+    flexDirection: 'column',
+    paddingHorizontal: 14, paddingVertical: 10,
+    gap: 10,
+  },
+  navTopRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', width: '100%',
   },
   logo: {
     fontSize: 18, fontWeight: '900', color: C.gold,
-    letterSpacing: 3, minWidth: 120,
+    letterSpacing: 3,
   },
+  logoMobile: { fontSize: 16, letterSpacing: 2 },
   navSearch: {
     flex: 1, flexDirection: 'row', alignItems: 'center',
     backgroundColor: C.surface, borderRadius: 10,
     borderWidth: 1, borderColor: C.border,
     paddingHorizontal: 12, height: 40,
+  },
+  navSearchMobile: {
+    flex: 0, width: '100%', height: 38,
   },
   searchIcon: { fontSize: 14, marginRight: 6 },
   navSearchInput: {
@@ -316,21 +347,28 @@ const styles = StyleSheet.create({
   },
   logoutBtnText: { color: '#fca5a5', fontWeight: '700', fontSize: 13 },
 
-  // ── HERO ──
+  // ── HERO (Desktop) ──
   hero: {
     paddingHorizontal: 30, paddingVertical: 52,
     backgroundColor: '#111827',
     borderBottomWidth: 1, borderBottomColor: C.border,
     alignItems: 'center',
   },
-  heroOverlay: { position: 'absolute', inset: 0 },
+  // ── HERO (Mobile) ──
+  heroMobile: {
+    paddingHorizontal: 20, paddingVertical: 30,
+  },
   heroEyebrow: { color: C.gold, fontSize: 11, fontWeight: '700', letterSpacing: 3, marginBottom: 14 },
   heroTitle: {
     color: C.text, fontSize: 38, fontWeight: '900',
     textAlign: 'center', lineHeight: 46,
     marginBottom: 12,
   },
+  heroTitleMobile: {
+    fontSize: 26, lineHeight: 34,
+  },
   heroSub: { color: C.textMuted, fontSize: 15, textAlign: 'center' },
+  heroSubMobile: { fontSize: 13 },
 
   // ── ADMIN PANEL ──
   adminPanel: {
@@ -339,11 +377,15 @@ const styles = StyleSheet.create({
     padding: 18, borderWidth: 1, borderColor: '#2d4a7a',
     maxWidth: 900, alignSelf: 'center', width: '90%',
   },
+  adminPanelMobile: {
+    flexDirection: 'column', gap: 12, alignItems: 'stretch',
+    margin: 12, padding: 14,
+  },
   adminTitle: { color: C.gold, fontWeight: '800', fontSize: 16 },
   adminSub: { color: C.textMuted, fontSize: 12, marginTop: 3 },
   addBtn: {
     backgroundColor: C.gold, paddingVertical: 10,
-    paddingHorizontal: 20, borderRadius: 10,
+    paddingHorizontal: 20, borderRadius: 10, alignItems: 'center',
   },
   addBtnText: { color: '#0F172A', fontWeight: '800', fontSize: 14 },
 
@@ -353,18 +395,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 16,
     maxWidth: 960, alignSelf: 'center', width: '100%',
   },
+  sectionHeaderMobile: {
+    paddingHorizontal: 16, paddingVertical: 12,
+  },
   sectionTitle: { color: C.text, fontSize: 20, fontWeight: '800' },
+  sectionTitleMobile: { fontSize: 17 },
   sectionCount: {
     color: C.textMuted, fontSize: 13, backgroundColor: C.surface,
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
   },
 
-  // ── GRID ──
+  // ── GRID (Desktop) ──
   grid: {
     flexDirection: 'row', flexWrap: 'wrap',
     paddingHorizontal: 16, gap: 16,
     maxWidth: 960, alignSelf: 'center', width: '100%',
     justifyContent: 'flex-start',
+  },
+  // ── GRID (Mobile) ──
+  gridMobile: {
+    paddingHorizontal: 14, gap: 14,
   },
 
   // ── CARD ──
@@ -372,7 +422,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.surface,
     borderRadius: 16, overflow: 'hidden',
     borderWidth: 1, borderColor: C.border,
-    width: 260, minWidth: 220,
     // shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -381,10 +430,11 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   imageContainer: { width: '100%', height: 180, position: 'relative' },
+  imageContainerMobile: { height: 220 },
   productImage: { width: '100%', height: '100%' },
   imageOverlay: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 60,
-    backgroundColor: 'rgba(15,23,42,0.3)', // ใช้สีทึบจางๆ แทนเพื่อไม่ให้เกิด error บน Native
+    backgroundColor: 'rgba(15,23,42,0.3)',
   },
   idBadge: {
     position: 'absolute', top: 10, left: 10,
@@ -395,16 +445,19 @@ const styles = StyleSheet.create({
   idBadgeText: { color: C.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 1 },
 
   cardBody: { padding: 14 },
+  cardBodyMobile: { padding: 16 },
   productName: { color: C.text, fontSize: 15, fontWeight: '700', marginBottom: 8, lineHeight: 20 },
+  productNameMobile: { fontSize: 16 },
 
   stockRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
   stockDot: { width: 7, height: 7, borderRadius: 4 },
   stockText: { color: C.textMuted, fontSize: 12 },
 
   priceText: { color: C.gold, fontSize: 20, fontWeight: '900', marginBottom: 12 },
+  priceTextMobile: { fontSize: 22 },
 
   addToCartBtn: {
-    backgroundColor: C.gold, paddingVertical: 10,
+    backgroundColor: C.gold, paddingVertical: 12,
     borderRadius: 10, alignItems: 'center',
   },
   addToCartText: { color: '#0F172A', fontWeight: '800', fontSize: 14 },

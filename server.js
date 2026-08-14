@@ -81,26 +81,41 @@ const requireAdmin = (req, res, next) => {
 // 1. ระบบ Login (POST /api/login)
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  const sql = 'SELECT * FROM admins WHERE username = ? AND password = ?';
+
+  // ลองค้นหาจากตาราง 'users' ก่อน (Local XAMPP)
+  const sql1 = 'SELECT * FROM users WHERE username = ? AND password = ?';
   
-  db.query(sql, [username, password], (err, results) => {
-    if (err) {
-      console.error('Login error:', err);
-      return res.status(500).json({ success: false, error: 'Database error' });
-    }
-    
-    if (results.length > 0) {
-      const user = results[0];
-      // สร้าง JWT Token
+  db.query(sql1, [username, password], (err1, results1) => {
+    if (!err1 && results1 && results1.length > 0) {
+      const user = results1[0];
       const token = jwt.sign(
         { id: user.id, username: user.username, role: 'admin' },
         JWT_SECRET,
         { expiresIn: '2h' }
       );
-      res.json({ success: true, message: 'เข้าสู่ระบบสำเร็จ', token });
-    } else {
-      res.status(401).json({ success: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+      return res.json({ success: true, message: 'เข้าสู่ระบบสำเร็จ', token });
     }
+
+    // ถ้าไม่เจอในตาราง users → ลองค้นหาจากตาราง 'admins' (VPS)
+    const sql2 = 'SELECT * FROM admins WHERE username = ? AND password = ?';
+    db.query(sql2, [username, password], (err2, results2) => {
+      if (err2) {
+        console.error('Login error:', err2);
+        return res.status(500).json({ success: false, error: 'Database error' });
+      }
+
+      if (results2 && results2.length > 0) {
+        const user = results2[0];
+        const token = jwt.sign(
+          { id: user.id, username: user.username, role: 'admin' },
+          JWT_SECRET,
+          { expiresIn: '2h' }
+        );
+        res.json({ success: true, message: 'เข้าสู่ระบบสำเร็จ', token });
+      } else {
+        res.status(401).json({ success: false, error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+      }
+    });
   });
 });
 
