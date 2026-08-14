@@ -30,6 +30,9 @@ export default function Index() {
   const [cartCount, setCartCount] = useState(0);
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const isAdmin = params.admin === 'true';
 
   const loadProducts = async (searchQuery = '') => {
@@ -38,15 +41,26 @@ export default function Index() {
       if (searchQuery) url += `?search=${searchQuery}`;
       const response = await fetch(url);
       const data = await response.json();
-      setProducts(data);
+      // ป้องกัน error: ต้องเป็น array เสมอ
+      setProducts(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error loading products:', error);
-      Alert.alert('Error', 'Cannot connect to server. Make sure server.js is running.');
+      setProducts([]);
     }
+  };
+
+  // โหลดสินค้าทั้งหมดสำหรับ autocomplete
+  const loadAllProducts = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setAllProducts(Array.isArray(data) ? data : []);
+    } catch (e) { setAllProducts([]); }
   };
 
   useEffect(() => {
     loadProducts();
+    loadAllProducts();
     try {
       const cartSaved = localStorage.getItem('ming_cart');
       const cartItems = cartSaved ? JSON.parse(cartSaved) : [];
@@ -55,8 +69,31 @@ export default function Index() {
     } catch (e) { setCartCount(0); }
   }, [params.newProduct, params.updatedProduct, params.admin, params.refresh]);
 
-  const handleSearch = () => loadProducts(search);
+  const handleSearch = () => { setShowSuggestions(false); loadProducts(search); };
   const handleKeyPress = (e) => { if (e.nativeEvent.key === 'Enter') handleSearch(); };
+
+  // Autocomplete: กรองชื่อสินค้าตอนพิมพ์
+  const handleSearchChange = (text) => {
+    setSearch(text);
+    if (text.length > 0) {
+      const filtered = allProducts.filter(p =>
+        (p.name || p.productname || '').toLowerCase().includes(text.toLowerCase())
+      );
+      setSuggestions(filtered.slice(0, 5));
+      setShowSuggestions(true);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      loadProducts();
+    }
+  };
+
+  const selectSuggestion = (item) => {
+    const name = item.name || item.productname || '';
+    setSearch(name);
+    setShowSuggestions(false);
+    loadProducts(name);
+  };
 
   const handleAddToCart = (item) => {
     try {
@@ -136,22 +173,43 @@ export default function Index() {
           </View>
         </View>
 
-        {/* ── Search Bar (toggle) ── */}
+        {/* ── Search Bar (toggle) + Autocomplete ── */}
         {showSearch && (
-          <View style={m.searchBar}>
-            <TextInput
-              style={m.searchInput}
-              placeholder="Search glasses..."
-              placeholderTextColor="#64748B"
-              value={search}
-              onChangeText={setSearch}
-              onKeyPress={handleKeyPress}
-              onSubmitEditing={handleSearch}
-              autoFocus
-            />
-            <TouchableOpacity style={m.searchBtn} onPress={handleSearch}>
-              <Text style={m.searchBtnText}>Search</Text>
-            </TouchableOpacity>
+          <View style={{ zIndex: 100 }}>
+            <View style={m.searchBar}>
+              <TextInput
+                style={m.searchInput}
+                placeholder="Search glasses..."
+                placeholderTextColor="#64748B"
+                value={search}
+                onChangeText={handleSearchChange}
+                onKeyPress={handleKeyPress}
+                onSubmitEditing={handleSearch}
+                autoFocus
+              />
+              <TouchableOpacity style={m.searchBtn} onPress={handleSearch}>
+                <Text style={m.searchBtnText}>Search</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <View style={m.suggestionsBox}>
+                {suggestions.map((item, i) => (
+                  <TouchableOpacity
+                    key={`sug-${item.id}-${i}`}
+                    style={[m.suggestionItem, i < suggestions.length - 1 && m.suggestionBorder]}
+                    onPress={() => selectSuggestion(item)}
+                  >
+                    <Text style={m.suggestionIcon}>🔍</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={m.suggestionText} numberOfLines={1}>{item.name || item.productname}</Text>
+                      <Text style={m.suggestionPrice}>฿{item.price}</Text>
+                    </View>
+                    <Image source={{ uri: item.image || item.img || item.image_url }} style={m.suggestionImg} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -269,20 +327,40 @@ export default function Index() {
       {/* ── Desktop Nav ── */}
       <View style={d.nav}>
         <Text style={d.navLogo}>MING OPTIC</Text>
-        <View style={d.navSearch}>
-          <Text style={{ fontSize: 14, marginRight: 6 }}>🔍</Text>
-          <TextInput
-            style={d.navSearchInput}
-            placeholder="Search glasses..."
-            placeholderTextColor="#64748B"
-            value={search}
-            onChangeText={setSearch}
-            onKeyPress={handleKeyPress}
-            onSubmitEditing={handleSearch}
-          />
-          <TouchableOpacity style={d.navSearchBtn} onPress={handleSearch}>
-            <Text style={d.navSearchBtnText}>Search</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1, zIndex: 100 }}>
+          <View style={d.navSearch}>
+            <Text style={{ fontSize: 14, marginRight: 6 }}>🔍</Text>
+            <TextInput
+              style={d.navSearchInput}
+              placeholder="Search glasses..."
+              placeholderTextColor="#64748B"
+              value={search}
+              onChangeText={handleSearchChange}
+              onKeyPress={handleKeyPress}
+              onSubmitEditing={handleSearch}
+            />
+            <TouchableOpacity style={d.navSearchBtn} onPress={handleSearch}>
+              <Text style={d.navSearchBtnText}>Search</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Desktop Suggestions */}
+          {showSuggestions && suggestions.length > 0 && (
+            <View style={d.suggestionsBox}>
+              {suggestions.map((item, i) => (
+                <TouchableOpacity
+                  key={`dsug-${item.id}-${i}`}
+                  style={[d.suggestionItem, i < suggestions.length - 1 && d.suggestionBorder]}
+                  onPress={() => selectSuggestion(item)}
+                >
+                  <Image source={{ uri: item.image || item.img || item.image_url }} style={d.suggestionImg} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={d.suggestionText}>{item.name || item.productname}</Text>
+                    <Text style={d.suggestionPrice}>฿{item.price}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
         <View style={d.navActions}>
           <Pressable style={d.cartBadgeBtn} onPress={() => router.push('/cart')}>
@@ -535,6 +613,22 @@ const m = StyleSheet.create({
     borderColor: C.gold, borderWidth: 1, marginTop: 12,
     paddingVertical: 6, paddingHorizontal: 16, borderRadius: 16,
   },
+
+  // Suggestions
+  suggestionsBox: {
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+    borderRadius: 8, marginHorizontal: 12, marginTop: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4, shadowRadius: 8, elevation: 10,
+  },
+  suggestionItem: {
+    flexDirection: 'row', alignItems: 'center', padding: 10, gap: 8,
+  },
+  suggestionBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
+  suggestionIcon: { fontSize: 12, color: C.textMuted },
+  suggestionText: { color: C.text, fontSize: 13, fontWeight: '600' },
+  suggestionPrice: { color: C.gold, fontSize: 11, fontWeight: '700', marginTop: 2 },
+  suggestionImg: { width: 36, height: 36, borderRadius: 6, backgroundColor: C.surface2 },
 });
 
 // ══════════════════════════════════════
@@ -655,4 +749,20 @@ const d = StyleSheet.create({
     backgroundColor: '#3b0f0f', paddingVertical: 9, paddingHorizontal: 14,
     borderRadius: 9, alignItems: 'center', borderWidth: 1, borderColor: '#7f1d1d',
   },
+
+  // Suggestions
+  suggestionsBox: {
+    position: 'absolute', top: 44, left: 0, right: 0,
+    backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
+    borderRadius: 10, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5, shadowRadius: 12, elevation: 15,
+  },
+  suggestionItem: {
+    flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12,
+  },
+  suggestionBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
+  suggestionText: { color: C.text, fontSize: 14, fontWeight: '600' },
+  suggestionPrice: { color: C.gold, fontSize: 12, fontWeight: '700', marginTop: 2 },
+  suggestionImg: { width: 40, height: 40, borderRadius: 8, backgroundColor: C.surface2 },
 });

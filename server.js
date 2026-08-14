@@ -130,7 +130,8 @@ app.get('/api/products', (req, res) => {
   let queryParams = [];
 
   if (q) {
-    sql += ' WHERE name LIKE ? OR productname LIKE ?';
+    // ใช้ name LIKE ? เป็นหลัก (รองรับทั้ง XAMPP local และ VPS)
+    sql += ' WHERE (name LIKE ? OR id LIKE ?)';
     queryParams.push(`%${q}%`, `%${q}%`);
   }
 
@@ -139,10 +140,24 @@ app.get('/api/products', (req, res) => {
 
   db.query(sql, actualParams, (err, results) => {
     if (err) {
-      console.error('Error fetching products:', err.message);
-      return res.status(500).json({ error: err.message });
+      // ถ้า column 'name' ไม่มี (VPS) → ลองใช้ 'productname' แทน
+      console.error('Search error, trying fallback:', err.message);
+      let fallbackSql = 'SELECT * FROM products';
+      let fallbackParams = [];
+      if (q) {
+        fallbackSql += ' WHERE (productname LIKE ? OR id LIKE ?)';
+        fallbackParams.push(`%${q}%`, `%${q}%`);
+      }
+      fallbackSql += ' LIMIT ? OFFSET ?';
+      db.query(fallbackSql, [...fallbackParams, limit, offset], (err2, results2) => {
+        if (err2) {
+          return res.status(500).json({ error: err2.message });
+        }
+        res.json(results2 || []);
+      });
+      return;
     }
-    res.json(results);
+    res.json(results || []);
   });
 });
 
