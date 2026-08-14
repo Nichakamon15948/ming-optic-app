@@ -299,10 +299,10 @@ export default function Index() {
                           style={m.editBtnM}
                           onPress={() => router.push(`/edit?product=${encodeURIComponent(JSON.stringify(item))}`)}
                         >
-                          <Text style={m.editBtnMText}>✏️</Text>
+                          <Text style={m.editBtnMText}>Edit</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={m.deleteBtnM} onPress={() => handleDelete(item.id)}>
-                          <Text style={m.deleteBtnMText}>🗑️</Text>
+                          <Text style={m.deleteBtnMText}>Del</Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -464,10 +464,10 @@ export default function Index() {
                         style={d.editBtn}
                         onPress={() => router.push(`/edit?product=${encodeURIComponent(JSON.stringify(item))}`)}
                       >
-                        <Text style={d.editBtnText}>✏️ Edit</Text>
+                        <Text style={d.editBtnText}>Edit</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={d.deleteBtn} onPress={() => handleDelete(item.id)}>
-                        <Text style={{ fontSize: 15 }}>🗑️</Text>
+                        <Text style={{ fontSize: 15, color: '#fca5a5' }}>Del</Text>
                       </TouchableOpacity>
                     </View>
                   )}

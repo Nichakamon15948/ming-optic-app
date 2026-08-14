@@ -28,6 +28,18 @@ export default function RootLayout() {
         name="cart" 
         options={{ title: 'Cart', drawerItemStyle: { display: 'none' } }} 
       />
+      <Drawer.Screen 
+        name="explore" 
+        options={{ title: 'Explore', drawerItemStyle: { display: 'none' } }} 
+      />
+      <Drawer.Screen 
+        name="products" 
+        options={{ title: 'Products', drawerItemStyle: { display: 'none' } }} 
+      />
+      <Drawer.Screen 
+        name="search" 
+        options={{ title: 'Search', drawerItemStyle: { display: 'none' } }} 
+      />
     </Drawer>
   );
 }

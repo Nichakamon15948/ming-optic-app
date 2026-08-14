@@ -21,7 +21,7 @@ export default function AddProductScreen() {
 
   const handlePriceChange = (text: string) => {
     const num = text.replace(/[^0-9]/g, '');
-    setPrice(num === '' ? '' : '฿' + Number(num).toLocaleString());
+    setPrice(num);
     if (errors.price) setErrors(p => ({ ...p, price: '' }));
   };
 
@@ -53,7 +53,7 @@ export default function AddProductScreen() {
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        Alert.alert('Success ✓', 'Product added successfully!');
+        Alert.alert('Success', 'Product added successfully!');
         router.replace(`/?admin=true&refresh=${Date.now()}`);
       } else {
         Alert.alert('Error', data.error || 'Failed to save product.');
@@ -67,7 +67,7 @@ export default function AddProductScreen() {
     <View style={styles.fieldGroup}>
       <Text style={styles.label}>{label}</Text>
       {children}
-      {error ? <Text style={styles.errorText}>⚠ {error}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 
@@ -77,14 +77,14 @@ export default function AddProductScreen() {
       <View style={styles.topBar}>
         <Text style={styles.logo}>MING OPTIC</Text>
         <Pressable style={styles.backBtn} onPress={() => router.replace(`/?admin=true&refresh=${Date.now()}`)}>
-          <Text style={styles.backBtnText}>← Back</Text>
+          <Text style={styles.backBtnText}>Back</Text>
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={styles.formWrapper}>
           <View style={styles.formHeader}>
-            <Text style={styles.formTitle}>➕ Add New Eyewear</Text>
+            <Text style={styles.formTitle}>Add New Eyewear</Text>
             <Text style={styles.formSub}>Fill in the details below to add a product to your catalog.</Text>
           </View>
 
@@ -108,7 +108,7 @@ export default function AddProductScreen() {
             />
           </Field>
 
-          <Field label="PRICE (฿)" error={errors.price}>
+          <Field label="PRICE" error={errors.price}>
             <TextInput
               style={[styles.input, errors.price && styles.inputErr]}
               placeholder="e.g. 1290"
