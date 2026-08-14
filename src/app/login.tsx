@@ -80,6 +80,11 @@ export default function LoginScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCorrect={false}
+          autoCapitalize="none"
+          autoComplete="off"
+          spellCheck={false}
+          textContentType="password"
         />
 
         <Pressable

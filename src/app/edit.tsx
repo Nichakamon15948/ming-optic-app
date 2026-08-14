@@ -24,7 +24,9 @@ export default function EditProductScreen() {
         const item = JSON.parse(decodeURIComponent(params.product as string));
         setProductId(item.id);
         setName(item.name || '');
-        setPrice(item.price || '');
+        // เก็บราคาเป็นตัวเลขล้วนๆ
+        const rawPrice = String(item.price || '').replace(/[^0-9.]/g, '');
+        setPrice(rawPrice);
         setStock(String(item.stock || ''));
         setImage(item.image || item.image_url || '');
       } catch (e) { console.error(e); }
@@ -32,8 +34,8 @@ export default function EditProductScreen() {
   }, [params.product]);
 
   const handlePriceChange = (text: string) => {
-    const num = text.replace(/[^0-9]/g, '');
-    setPrice(num === '' ? '' : '฿' + Number(num).toLocaleString());
+    const num = text.replace(/[^0-9.]/g, '');
+    setPrice(num);
   };
 
   const handleSaveEdit = async () => {
@@ -43,14 +45,20 @@ export default function EditProductScreen() {
     }
     setIsSubmitting(true);
     try {
+      // ส่งราคาเป็นตัวเลขล้วนๆ (ไม่มี ฿ หรือ ,)
+      const cleanPrice = price.replace(/[^0-9.]/g, '');
+      const cleanStock = stock.replace(/[^0-9]/g, '');
+
       const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, stock: stock.replace(/[^0-9]/g, ''), price, image })
+        body: JSON.stringify({ name, stock: cleanStock, price: cleanPrice, image })
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        Alert.alert('Success ✓', 'Product updated successfully!');
+        if (typeof window !== 'undefined' && window.alert) {
+          window.alert('Product updated successfully!');
+        }
         router.replace(`/?admin=true&refresh=${Date.now()}`);
       } else {
         Alert.alert('Error', data.error || data.message || 'Failed to update product.');
@@ -65,18 +73,18 @@ export default function EditProductScreen() {
       <View style={styles.topBar}>
         <Text style={styles.logo}>MING OPTIC</Text>
         <Pressable style={styles.backBtn} onPress={() => router.replace('/?admin=true')}>
-          <Text style={styles.backBtnText}>← Back</Text>
+          <Text style={styles.backBtnText}>Back</Text>
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={styles.formWrapper}>
           <View style={styles.formHeader}>
-            <Text style={styles.formTitle}>✏️ Edit Eyewear</Text>
+            <Text style={styles.formTitle}>Edit Eyewear</Text>
             <Text style={styles.formSub}>Update the product details below.</Text>
             {productId && (
               <View style={styles.idChip}>
-                <Text style={styles.idChipText}>Editing ID: {productId}</Text>
+                <Text style={styles.idChipText}>{'Editing ID: ' + productId}</Text>
               </View>
             )}
           </View>
@@ -84,7 +92,7 @@ export default function EditProductScreen() {
           <Text style={styles.label}>PRODUCT NAME</Text>
           <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={C.textMuted} />
 
-          <Text style={styles.label}>PRICE (฿)</Text>
+          <Text style={styles.label}>PRICE</Text>
           <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} keyboardType="numeric" placeholderTextColor={C.textMuted} />
 
           <Text style={styles.label}>STOCK (UNITS)</Text>
@@ -98,7 +106,7 @@ export default function EditProductScreen() {
             onPress={handleSaveEdit}
             disabled={isSubmitting}
           >
-            <Text style={styles.saveBtnText}>{isSubmitting ? 'Saving...' : '✓ Save Changes'}</Text>
+            <Text style={styles.saveBtnText}>{isSubmitting ? 'Saving...' : 'Save Changes'}</Text>
           </Pressable>
 
           <Pressable style={styles.cancelBtn} onPress={() => router.replace('/?admin=true')}>
