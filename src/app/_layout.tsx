@@ -4,9 +4,8 @@ export default function RootLayout() {
   return (
     <Drawer
       screenOptions={{
-        drawerActiveTintColor: '#B5838D',
-        headerTitle: 'MING OPTIC',
-        headerTintColor: '#B5838D',
+        drawerActiveTintColor: '#C9A84C',
+        headerShown: false,
       }}
     >
       <Drawer.Screen 
@@ -24,6 +23,10 @@ export default function RootLayout() {
       <Drawer.Screen 
         name="edit" 
         options={{ title: 'Edit Product', drawerItemStyle: { display: 'none' } }} 
+      />
+      <Drawer.Screen 
+        name="cart" 
+        options={{ title: 'Cart', drawerItemStyle: { display: 'none' } }} 
       />
     </Drawer>
   );

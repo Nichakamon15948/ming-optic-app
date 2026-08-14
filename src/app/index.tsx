@@ -227,7 +227,7 @@ export default function Index() {
                   </View>
 
                   <Text style={[styles.priceText, isMobile && styles.priceTextMobile]}>
-                    ฿{Number(item.price).toLocaleString()}
+                    ฿{item.price}
                   </Text>
 
                   {/* Buttons */}
