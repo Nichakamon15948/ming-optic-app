@@ -522,7 +522,7 @@ const m = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, borderColor: C.border,
     paddingHorizontal: 10, height: 36,
   },
-  searchInput: { flex: 1, color: C.text, fontSize: 13, outlineStyle: 'none' },
+  searchInput: { flex: 1, color: C.text, fontSize: 13 },
   searchBtn: { backgroundColor: C.gold, paddingVertical: 4, paddingHorizontal: 12, borderRadius: 6 },
   searchBtnText: { color: '#0F172A', fontWeight: '700', fontSize: 12 },
 
@@ -651,7 +651,7 @@ const d = StyleSheet.create({
     borderWidth: 1, borderColor: C.border,
     paddingHorizontal: 12, height: 40,
   },
-  navSearchInput: { flex: 1, color: C.text, fontSize: 14, outlineStyle: 'none' },
+  navSearchInput: { flex: 1, color: C.text, fontSize: 14 },
   navSearchBtn: { backgroundColor: C.gold, paddingVertical: 5, paddingHorizontal: 14, borderRadius: 7 },
   navSearchBtnText: { color: '#0F172A', fontWeight: '700', fontSize: 13 },
   navActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },

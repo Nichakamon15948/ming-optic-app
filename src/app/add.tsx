@@ -179,7 +179,6 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
     padding: 13, borderRadius: 10, fontSize: 15, color: C.text,
-    outlineStyle: 'none',
   },
   inputMultiline: { minHeight: 44 },
   inputErr: { borderColor: C.red, borderWidth: 2 },

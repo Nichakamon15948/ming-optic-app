@@ -1,22 +1,24 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { API_BASE_URL } from '../constants/api';
 
 const C = {
   bg: '#0F172A', surface: '#1E293B', surface2: '#263548',
-  border: '#334155', gold: '#C9A84C', text: '#F1F5F9', textMuted: '#94A3B8',
+  border: '#334155', gold: '#C9A84C', text: '#F1F5F9', textMuted: '#94A3B8', red: '#EF4444',
 };
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
   const handleLogin = async () => {
+    setErrorMsg('');
     if (!username || !password) {
-      Alert.alert('Error', 'Please enter username and password.');
+      setErrorMsg('Please enter username and password.');
       return;
     }
     setLoading(true);
@@ -37,10 +39,10 @@ export default function LoginScreen() {
         }
         router.replace('/?admin=true');
       } else {
-        Alert.alert('Login Failed', 'Invalid username or password.');
+        setErrorMsg('Username or password is incorrect.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Cannot connect to server.');
+      setErrorMsg('Cannot connect to server. Make sure server.js is running.');
     } finally {
       setLoading(false);
     }
@@ -48,37 +50,42 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Background decoration */}
       <View style={styles.bgCircle1} />
       <View style={styles.bgCircle2} />
 
       <View style={styles.card}>
-        {/* Logo */}
         <Text style={styles.logoText}>MING OPTIC</Text>
         <Text style={styles.logoSub}>Admin Portal</Text>
 
         <View style={styles.divider} />
 
-        <Text style={styles.title}>🔐 Sign In</Text>
+        <Text style={styles.title}>Sign In</Text>
         <Text style={styles.subtitle}>Enter your credentials to access the admin panel</Text>
+
+        {errorMsg !== '' && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{errorMsg}</Text>
+          </View>
+        )}
 
         <Text style={styles.label}>Username</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errorMsg !== '' && styles.inputError]}
           placeholder="Enter username"
           placeholderTextColor={C.textMuted}
           value={username}
-          onChangeText={setUsername}
+          onChangeText={(t) => { setUsername(t); setErrorMsg(''); }}
           autoCapitalize="none"
+          autoCorrect={false}
         />
 
         <Text style={styles.label}>Password</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, errorMsg !== '' && styles.inputError]}
           placeholder="Enter password"
           placeholderTextColor={C.textMuted}
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(t) => { setPassword(t); setErrorMsg(''); }}
           secureTextEntry
           autoCorrect={false}
           autoCapitalize="none"
@@ -93,12 +100,12 @@ export default function LoginScreen() {
           disabled={loading}
         >
           <Text style={styles.loginBtnText}>
-            {loading ? 'Signing in...' : 'Sign In →'}
+            {loading ? 'Signing in...' : 'Sign In'}
           </Text>
         </Pressable>
 
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>← Back to Store</Text>
+          <Text style={styles.backBtnText}>Back to Store</Text>
         </Pressable>
       </View>
     </SafeAreaView>
@@ -134,12 +141,17 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: C.border, marginVertical: 24 },
   title: { color: C.text, fontSize: 22, fontWeight: '800', marginBottom: 6 },
   subtitle: { color: C.textMuted, fontSize: 13, marginBottom: 24, lineHeight: 18 },
+  errorBox: {
+    backgroundColor: '#7f1d1d', borderWidth: 1, borderColor: '#991b1b',
+    borderRadius: 10, padding: 12, marginBottom: 16,
+  },
+  errorText: { color: '#fca5a5', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   label: { color: C.textMuted, fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 6, marginTop: 14 },
   input: {
     backgroundColor: C.surface2, borderWidth: 1, borderColor: C.border,
     padding: 13, borderRadius: 10, fontSize: 15, color: C.text,
-    outlineStyle: 'none',
   },
+  inputError: { borderColor: C.red },
   loginBtn: {
     backgroundColor: C.gold, padding: 15, borderRadius: 12,
     alignItems: 'center', marginTop: 28,

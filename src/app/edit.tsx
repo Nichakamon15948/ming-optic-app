@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { API_BASE_URL } from '../constants/api';
 
 const C = {
   bg: '#0F172A', surface: '#1E293B', surface2: '#263548',
-  border: '#334155', gold: '#C9A84C', text: '#F1F5F9', textMuted: '#94A3B8', red: '#EF4444',
+  border: '#334155', gold: '#C9A84C', text: '#F1F5F9', textMuted: '#94A3B8', red: '#EF4444', green: '#10B981',
 };
 
 export default function EditProductScreen() {
@@ -17,6 +17,8 @@ export default function EditProductScreen() {
   const [image, setImage] = useState('');
   const [productId, setProductId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     if (params.product) {
@@ -24,7 +26,6 @@ export default function EditProductScreen() {
         const item = JSON.parse(decodeURIComponent(params.product as string));
         setProductId(item.id);
         setName(item.name || '');
-        // เก็บราคาเป็นตัวเลขล้วนๆ
         const rawPrice = String(item.price || '').replace(/[^0-9.]/g, '');
         setPrice(rawPrice);
         setStock(String(item.stock || ''));
@@ -36,16 +37,19 @@ export default function EditProductScreen() {
   const handlePriceChange = (text: string) => {
     const num = text.replace(/[^0-9.]/g, '');
     setPrice(num);
+    setErrorMsg('');
   };
 
   const handleSaveEdit = async () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+
     if (!name || !price || !stock || !image) {
-      Alert.alert('Warning', 'Please fill in all fields.');
+      setErrorMsg('Please fill in all fields');
       return;
     }
     setIsSubmitting(true);
     try {
-      // ส่งราคาเป็นตัวเลขล้วนๆ (ไม่มี ฿ หรือ ,)
       const cleanPrice = price.replace(/[^0-9.]/g, '');
       const cleanStock = stock.replace(/[^0-9]/g, '');
 
@@ -56,15 +60,15 @@ export default function EditProductScreen() {
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        if (typeof window !== 'undefined' && window.alert) {
-          window.alert('Product updated successfully!');
-        }
-        router.replace(`/?admin=true&refresh=${Date.now()}`);
+        setSuccessMsg('Product updated successfully!');
+        setTimeout(() => {
+          router.replace(`/?admin=true&refresh=${Date.now()}`);
+        }, 800);
       } else {
-        Alert.alert('Error', data.error || data.message || 'Failed to update product.');
+        setErrorMsg(data.error || data.message || 'Failed to update product');
       }
     } catch (e) {
-      Alert.alert('Error', 'Cannot connect to server.');
+      setErrorMsg('Cannot connect to server');
     } finally { setIsSubmitting(false); }
   };
 
@@ -81,7 +85,7 @@ export default function EditProductScreen() {
         <View style={styles.formWrapper}>
           <View style={styles.formHeader}>
             <Text style={styles.formTitle}>Edit Eyewear</Text>
-            <Text style={styles.formSub}>Update the product details below.</Text>
+            <Text style={styles.formSub}>Update the product details below</Text>
             {productId && (
               <View style={styles.idChip}>
                 <Text style={styles.idChipText}>{'Editing ID: ' + productId}</Text>
@@ -89,17 +93,51 @@ export default function EditProductScreen() {
             )}
           </View>
 
+          {errorMsg !== '' && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+
+          {successMsg !== '' && (
+            <View style={styles.successBox}>
+              <Text style={styles.successText}>{successMsg}</Text>
+            </View>
+          )}
+
           <Text style={styles.label}>PRODUCT NAME</Text>
-          <TextInput style={styles.input} value={name} onChangeText={setName} placeholderTextColor={C.textMuted} />
+          <TextInput
+            style={styles.input}
+            value={name}
+            onChangeText={(t) => { setName(t); setErrorMsg(''); }}
+            placeholderTextColor={C.textMuted}
+          />
 
           <Text style={styles.label}>PRICE</Text>
-          <TextInput style={styles.input} value={price} onChangeText={handlePriceChange} keyboardType="numeric" placeholderTextColor={C.textMuted} />
+          <TextInput
+            style={styles.input}
+            value={price}
+            onChangeText={handlePriceChange}
+            keyboardType="numeric"
+            placeholderTextColor={C.textMuted}
+          />
 
           <Text style={styles.label}>STOCK (UNITS)</Text>
-          <TextInput style={styles.input} value={stock} onChangeText={t => setStock(t.replace(/[^0-9]/g, ''))} keyboardType="numeric" placeholderTextColor={C.textMuted} />
+          <TextInput
+            style={styles.input}
+            value={stock}
+            onChangeText={t => { setStock(t.replace(/[^0-9]/g, '')); setErrorMsg(''); }}
+            keyboardType="numeric"
+            placeholderTextColor={C.textMuted}
+          />
 
           <Text style={styles.label}>IMAGE URL</Text>
-          <TextInput style={styles.input} value={image} onChangeText={setImage} placeholderTextColor={C.textMuted} />
+          <TextInput
+            style={styles.input}
+            value={image}
+            onChangeText={(t) => { setImage(t); setErrorMsg(''); }}
+            placeholderTextColor={C.textMuted}
+          />
 
           <Pressable
             style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
@@ -141,10 +179,20 @@ const styles = StyleSheet.create({
     borderRadius: 20, borderWidth: 1, borderColor: C.border,
   },
   idChipText: { color: C.textMuted, fontSize: 12, fontWeight: '600' },
+  errorBox: {
+    backgroundColor: '#7f1d1d', borderWidth: 1, borderColor: '#991b1b',
+    borderRadius: 10, padding: 12, marginBottom: 16,
+  },
+  errorText: { color: '#fca5a5', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  successBox: {
+    backgroundColor: '#064e3b', borderWidth: 1, borderColor: '#065f46',
+    borderRadius: 10, padding: 12, marginBottom: 16,
+  },
+  successText: { color: '#6ee7b7', fontSize: 13, fontWeight: '600', textAlign: 'center' },
   label: { color: C.textMuted, fontSize: 11, fontWeight: '700', letterSpacing: 1.5, marginBottom: 7, marginTop: 18 },
   input: {
     backgroundColor: C.surface, borderWidth: 1, borderColor: C.border,
-    padding: 13, borderRadius: 10, fontSize: 15, color: C.text, outlineStyle: 'none',
+    padding: 13, borderRadius: 10, fontSize: 15, color: C.text,
   },
   saveBtn: {
     backgroundColor: C.gold, padding: 16, borderRadius: 12,
