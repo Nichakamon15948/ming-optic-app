@@ -68,7 +68,8 @@ export default function EditProductScreen() {
         setErrorMsg(data.error || data.message || 'Failed to update product');
       }
     } catch (e) {
-      setErrorMsg('Cannot connect to server');
+      console.error('Edit save error:', e, 'URL:', `${API_BASE_URL}/products/${productId}`);
+      setErrorMsg('Cannot connect to server: ' + (e.message || String(e)));
     } finally { setIsSubmitting(false); }
   };
 
