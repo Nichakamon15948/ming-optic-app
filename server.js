@@ -31,21 +31,25 @@ try {
   console.error('Error loading .env file:', e.message);
 }
 
-// ตั้งค่าการเชื่อมต่อฐานข้อมูล MySQL
-const db = mysql.createConnection({
+// ตั้งค่าการเชื่อมต่อฐานข้อมูล MySQL (ใช้ Pool เพื่อ reconnect อัตโนมัติ)
+const db = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '', 
   database: process.env.DB_NAME || process.env.DB_DATABASE || 'ip_std6730202173',
-  port: process.env.DB_PORT || 3306
+  port: process.env.DB_PORT || 3306,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
-db.connect((err) => {
+// ทดสอบการเชื่อมต่อ
+db.query('SELECT 1', (err) => {
   if (err) {
-    console.error('Error connecting to database:', err);
-    return;
+    console.error('Warning: MySQL not connected yet. Will auto-retry when MySQL starts.');
+  } else {
+    console.log(`Connected to MySQL database: ${process.env.DB_NAME || process.env.DB_DATABASE || 'ip_std6730202173'}`);
   }
-  console.log(`Connected to MySQL database: ${process.env.DB_NAME || process.env.DB_DATABASE || 'ip_std6730202173'}`);
 });
 
 const jwt = require('jsonwebtoken');

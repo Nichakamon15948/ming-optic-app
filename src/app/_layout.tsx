@@ -1,4 +1,8 @@
 import { Drawer } from 'expo-router/drawer';
+import { LogBox } from 'react-native';
+
+// ซ่อน warning "Unexpected text node" ที่มาจาก Drawer library
+LogBox.ignoreLogs(['Unexpected text node']);
 
 export default function RootLayout() {
   return (
