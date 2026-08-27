@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { API_BASE_URL } from '../constants/api';
 
@@ -72,21 +72,34 @@ export default function Index() {
   const handleSearch = () => { setShowSuggestions(false); loadProducts(search); };
   const handleKeyPress = (e) => { if (e.nativeEvent.key === 'Enter') handleSearch(); };
 
-  // Autocomplete: กรองชื่อสินค้าตอนพิมพ์
-  const handleSearchChange = (text) => {
+  // Autocomplete: กรองชื่อสินค้าตอนพิมพ์ พร้อม Debounce 300ms
+  // Debounce = หน่วงเวลา 300ms ก่อนเรียก API เพื่อลดภาระ server
+  const debounceTimer = useRef(null);
+
+  const handleSearchChange = useCallback((text) => {
     setSearch(text);
+
+    // ล้าง timer เก่าทุกครั้งที่พิมพ์ตัวอักษรใหม่
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+
     if (text.length > 0) {
+      // กรอง autocomplete suggestions ทันที (จากข้อมูลที่โหลดไว้แล้ว)
       const filtered = allProducts.filter(p =>
         (p.name || p.productname || '').toLowerCase().includes(text.toLowerCase())
       );
       setSuggestions(filtered.slice(0, 5));
       setShowSuggestions(true);
+
+      // ตั้ง Debounce: รอ 300ms แล้วค่อยเรียก API ค้นหาจริง
+      debounceTimer.current = setTimeout(() => {
+        loadProducts(text);
+      }, 300);
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
       loadProducts();
     }
-  };
+  }, [allProducts]);
 
   const selectSuggestion = (item) => {
     const name = item.name || item.productname || '';

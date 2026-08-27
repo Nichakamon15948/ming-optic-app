@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# ไฟล์ลับ — ห้าม push ขึ้น GitHub
+.env
