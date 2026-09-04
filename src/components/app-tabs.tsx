@@ -1,3 +1,15 @@
+// ════════════════════════════════════════
+// app-tabs.tsx — Tab Navigation สำหรับ Native (iOS/Android)
+// ════════════════════════════════════════
+// อธิบายรายละเอียด:
+// ไฟล์นี้มาจากเทมเพลต Expo ดั้งเดิม ใช้สร้างแถบ Tab ด้านล่างหน้าจอ
+// สำหรับแอปที่รันบน iOS/Android (ไม่ใช่เว็บ)
+// ⚠️ แอป Ming Optic ใช้ Drawer Navigation แทน Tab จึงไม่ได้เรียกใช้ไฟล์นี้โดยตรง
+//
+// การทำงาน:
+// 1. ดึงสี theme ปัจจุบัน (light/dark) จาก useColorScheme
+// 2. สร้าง NativeTabs พร้อม 2 แท็บ: Home และ Explore
+// 3. แต่ละแท็บมี Label (ชื่อ) และ Icon (ไอคอนรูปภาพ)
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 

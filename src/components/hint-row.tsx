@@ -1,3 +1,9 @@
+// ════════════════════════════════════════
+// hint-row.tsx — แถบแสดงคำแนะนำโค้ด (Hint Row)
+// ════════════════════════════════════════
+// อธิบายรายละเอียด:
+// คอมโพเนนต์สำหรับแสดงกล่องคำแนะนำ มักใช้สำหรับแนะนำไฟล์โค้ดที่ควรไปแก้ไขต่อ
+
 import type { ReactNode } from 'react';
 import { View, StyleSheet } from 'react-native';
 
@@ -11,6 +17,13 @@ type HintRowProps = {
   hint?: ReactNode;
 };
 
+// ════════════════════════════════════════
+// HintRow — คอมโพเนนต์หลักแสดง Hint
+// ════════════════════════════════════════
+// ขั้นตอนการทำงาน:
+// 1. แสดง `title` เป็นชื่อของคำแนะนำ (ค่าเริ่มต้น "Try editing")
+// 2. แสดง `hint` เป็นชื่อไฟล์หรือโค้ดคำแนะนำในกล่อง (ค่าเริ่มต้น "app/index.tsx")
+// 3. ใช้ ThemedText และ ThemedView เพื่อให้สอดคล้องกับธีมของแอป
 export function HintRow({ title = 'Try editing', hint = 'app/index.tsx' }: HintRowProps) {
   return (
     <View style={styles.stepRow}>

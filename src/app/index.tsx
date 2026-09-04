@@ -1,11 +1,38 @@
+// ════════════════════════════════════════
+// ไฟล์: index.tsx (หน้าหลักของแอปพลิเคชัน Ming Optic)
+// ════════════════════════════════════════
+// หน้าที่หลัก:
+// 1. แสดงรายการสินค้าทั้งหมด (แว่นตา) ในรูปแบบ Grid
+// 2. มีระบบค้นหาสินค้าพร้อม Autocomplete / Debounce
+// 3. รองรับ Responsive Design (แสดงผลต่างกันใน Mobile และ Desktop)
+// 4. มีระบบตะกร้าสินค้า (เพิ่มลงตะกร้า, แสดงจำนวน)
+// 5. มีระบบ Admin Mode (เพิ่ม, แก้ไข, ลบสินค้า) หากผู้ใช้เข้าสู่ระบบ
+// ────────────────────────────────────────
+
+// ────────────────────────────────────────
+// Imports Section - นำเข้าไลบรารีและคอมโพเนนต์ที่จำเป็น
+// ────────────────────────────────────────
+// useLocalSearchParams, useRouter: สำหรับจัดการ Routing และอ่านพารามิเตอร์จาก URL
 import { useLocalSearchParams, useRouter } from 'expo-router';
+// useCallback, useEffect, useRef, useState: React Hooks สำหรับจัดการ State และ Lifecycle
 import { useCallback, useEffect, useRef, useState } from 'react';
+// UI Components จาก React Native สำหรับสร้างหน้าจอ
 import { Alert, Image, Pressable, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+// นำเข้า API Base URL จากค่าคงที่
 import { API_BASE_URL } from '../constants/api';
 
 const API_URL = `${API_BASE_URL}/products`;
 
-// ── COLOR PALETTE ──
+// ════════════════════════════════════════
+// COLOR PALETTE (C) - ชุดสีที่ใช้ในแอปพลิเคชัน
+// ════════════════════════════════════════
+// เก็บค่าสีเป็น object เพื่อให้เรียกใช้และแก้ไขได้ง่ายในที่เดียว
+// - bg: สีพื้นหลังหลัก (น้ำเงินเข้ม)
+// - surface / surface2: สีพื้นหลังของการ์ดและกล่องข้อความที่มีความลึกต่างๆ
+// - border: สีเส้นขอบ
+// - gold / goldLight: สีทองใช้เป็นสีหลักของแบรนด์ (ปุ่ม, เน้นข้อความ, ไอคอน)
+// - text / textMuted: สีข้อความหลักและข้อความรอง
+// - green, amber, red: สีที่ใช้บอกสถานะ (เช่น จำนวนสต็อกสินค้า)
 const C = {
   bg: '#0F172A',
   surface: '#1E293B',
@@ -24,40 +51,100 @@ export default function Index() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { width } = useWindowDimensions();
-  const isMobile = width < 768;
+  const isMobile = width < 768; // ตรวจสอบว่าเป็น Mobile หรือไม่ (ความกว้าง < 768px)
 
+  // ────────────────────────────────────────
+  // State Variables - ตัวแปรเก็บสถานะของคอมโพเนนต์
+  // ────────────────────────────────────────
+  // products: เก็บรายการสินค้าที่กำลังแสดงผล (หลังจากค้นหาหรือโหลดมา)
   const [products, setProducts] = useState([]);
+  // cartCount: จำนวนชิ้นสินค้าทั้งหมดในตะกร้า
   const [cartCount, setCartCount] = useState(0);
+  // search: ข้อความที่ผู้ใช้พิมพ์ในช่องค้นหา
   const [search, setSearch] = useState('');
+  // showSearch: ควบคุมการเปิด/ปิดช่องค้นหาในโหมด Mobile
   const [showSearch, setShowSearch] = useState(false);
+  // allProducts: เก็บรายการสินค้าทั้งหมดเพื่อใช้ค้นหาแบบ Autocomplete โดยไม่ต้องเรียก API ซ้ำ
   const [allProducts, setAllProducts] = useState([]);
+  // suggestions: เก็บรายการสินค้าที่แนะนำเมื่อผู้ใช้กำลังพิมพ์ค้นหา
   const [suggestions, setSuggestions] = useState([]);
+  // showSuggestions: ควบคุมการเปิด/ปิดกล่องแสดงรายการแนะนำ (Autocomplete)
   const [showSuggestions, setShowSuggestions] = useState(false);
+  // isAdmin: ตรวจสอบสถานะว่าเข้าสู่ระบบเป็น Admin หรือไม่ (อ่านจาก URL params)
   const isAdmin = params.admin === 'true';
 
+  const currentSearchRef = useRef(''); // เก็บคำค้นหาล่าสุด เพื่อป้องกันปัญหา Race Condition จาก API
+
+  // ════════════════════════════════════════
+  // loadProducts — โหลดข้อมูลสินค้าจาก Server
+  // ════════════════════════════════════════
+  // ขั้นตอนการทำงาน:
+  // 1. อัปเดต currentSearchRef เพื่อบันทึกว่าคำค้นหาล่าสุดคืออะไร
+  // 2. สร้าง URL พร้อม query string (ถ้ามี) แล้วดึงข้อมูลจาก API
+  // 3. ป้องกัน Race Condition: ถ้าคำค้นหาเปลี่ยนไประหว่างรอ ให้ข้ามการอัปเดต State
+  // 4. ตรวจสอบให้แน่ใจว่าได้ข้อมูลเป็น Array และกรองเอาข้อมูลที่ไม่มี ID ออกไป
+  // 5. กรองผลลัพธ์ที่ฝั่ง Frontend อีกครั้งเพื่อความถูกต้อง
+  // 6. อัปเดต products state เพื่อนำไปแสดงผล
   const loadProducts = async (searchQuery = '') => {
+    currentSearchRef.current = searchQuery;
     try {
       let url = API_URL;
-      if (searchQuery) url += `?search=${searchQuery}`;
+      if (searchQuery) url += `?search=${encodeURIComponent(searchQuery)}`;
       const response = await fetch(url);
       const data = await response.json();
+      
+      // ป้องกัน Race Condition: ถ้าคำค้นหาถูกเปลี่ยนระหว่างรอ API ไม่ต้องอัปเดต state
+      if (currentSearchRef.current !== searchQuery) return;
+      
       // ป้องกัน error: ต้องเป็น array เสมอ
-      setProducts(Array.isArray(data) ? data : []);
+      let items = Array.isArray(data) ? data : [];
+
+      // กรองสินค้าที่ไม่มี ID ออก (ข้อมูลเก่าที่ไม่สมบูรณ์)
+      items = items.filter(p => p.id && String(p.id).trim() !== '');
+
+      // กรองผลลัพธ์ที่ฝั่ง Frontend เผื่อ server ไม่ได้กรองให้
+      if (searchQuery && items.length > 0) {
+        const q = searchQuery.toLowerCase();
+        const filtered = items.filter(p => {
+          const pName = (p.name || p.productname || '').toLowerCase();
+          const pId = (p.id || '').toLowerCase();
+          return pName.includes(q) || pId.includes(q);
+        });
+        // ใช้ผลลัพธ์ที่กรองแล้ว (ถ้ากรองแล้วไม่เหลือเลย จะแสดง array ว่าง)
+        items = filtered;
+      }
+
+      setProducts(items);
     } catch (error) {
       console.error('Error loading products:', error);
-      setProducts([]);
+      if (currentSearchRef.current === searchQuery) {
+        setProducts([]);
+      }
     }
   };
 
-  // โหลดสินค้าทั้งหมดสำหรับ autocomplete
+  // ════════════════════════════════════════
+  // loadAllProducts — โหลดข้อมูลสินค้าทั้งหมด
+  // ════════════════════════════════════════
+  // หน้าที่: โหลดสินค้าทั้งหมดมาเก็บไว้ใน state 'allProducts' ในตอนแรก
+  // เพื่อเอาไว้ใช้ทำระบบ Autocomplete แนะนำคำค้นหาฝั่ง Frontend อย่างรวดเร็ว
   const loadAllProducts = async () => {
     try {
       const response = await fetch(API_URL);
       const data = await response.json();
-      setAllProducts(Array.isArray(data) ? data : []);
+      const items = Array.isArray(data) ? data : [];
+      // กรองสินค้าที่ไม่มี ID ออก
+      setAllProducts(items.filter(p => p.id && String(p.id).trim() !== ''));
     } catch (e) { setAllProducts([]); }
   };
 
+  // ════════════════════════════════════════
+  // useEffect — Lifecycle สำหรับเริ่มต้นทำงาน
+  // ════════════════════════════════════════
+  // จะถูกเรียกเมื่อคอมโพเนนต์ถูกสร้าง หรือเมื่อพารามิเตอร์ URL เปลี่ยนไป
+  // หน้าที่: 
+  // 1. โหลดข้อมูลสินค้า (loadProducts และ loadAllProducts)
+  // 2. ดึงข้อมูลตะกร้าสินค้าจาก localStorage เพื่อมานับจำนวนรวมของสินค้าในตะกร้า
   useEffect(() => {
     loadProducts();
     loadAllProducts();
@@ -72,8 +159,13 @@ export default function Index() {
   const handleSearch = () => { setShowSuggestions(false); loadProducts(search); };
   const handleKeyPress = (e) => { if (e.nativeEvent.key === 'Enter') handleSearch(); };
 
-  // Autocomplete: กรองชื่อสินค้าตอนพิมพ์ พร้อม Debounce 300ms
-  // Debounce = หน่วงเวลา 300ms ก่อนเรียก API เพื่อลดภาระ server
+  // ════════════════════════════════════════
+  // handleSearchChange (Debounce) — จัดการการพิมพ์ค้นหา
+  // ════════════════════════════════════════
+  // แนวคิด Debounce: เป็นการหน่วงเวลาการเรียก API (ในที่นี้คือ 300ms) 
+  // ถ้ายูสเซอร์พิมพ์ตัวอักษรใหม่เข้ามาต่อเนื่องกัน จะล้าง Timer เดิมทิ้งแล้วเริ่มนับใหม่ 
+  // จนกว่าจะหยุดพิมพ์ครบ 300ms ถึงจะยอมเรียก API ทำให้ไม่เกิดการรัน API ซ้ำซ้อนมากเกินไป
+  // ระหว่างที่รอ จะโชว์ข้อมูล Autocomplete (suggestions) จาก allProducts ไปก่อน
   const debounceTimer = useRef(null);
 
   const handleSearchChange = useCallback((text) => {
@@ -82,7 +174,7 @@ export default function Index() {
     // ล้าง timer เก่าทุกครั้งที่พิมพ์ตัวอักษรใหม่
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
-    if (text.length > 0) {
+    if (text.trim().length > 0) {
       // กรอง autocomplete suggestions ทันที (จากข้อมูลที่โหลดไว้แล้ว)
       const filtered = allProducts.filter(p =>
         (p.name || p.productname || '').toLowerCase().includes(text.toLowerCase())
@@ -97,10 +189,18 @@ export default function Index() {
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
-      loadProducts();
+      // ตั้ง Debounce: รอ 300ms ก่อนโหลดสินค้าทั้งหมดกลับมา
+      debounceTimer.current = setTimeout(() => {
+        loadProducts('');
+      }, 300);
     }
   }, [allProducts]);
 
+  // ────────────────────────────────────────
+  // selectSuggestion — เลือกรายการแนะนำ
+  // ────────────────────────────────────────
+  // เมื่อยูสเซอร์คลิกที่รายการสินค้าในช่องแนะนำคำค้นหา จะเอาชื่อนั้นมาตั้งเป็น search
+  // แล้วเรียก loadProducts หาข้อมูลนั้นทันที พร้อมซ่อนกล่องแนะนำ
   const selectSuggestion = (item) => {
     const name = item.name || item.productname || '';
     setSearch(name);
@@ -108,6 +208,15 @@ export default function Index() {
     loadProducts(name);
   };
 
+  // ════════════════════════════════════════
+  // handleAddToCart — เพิ่มสินค้าลงตะกร้า
+  // ════════════════════════════════════════
+  // ขั้นตอนการทำงาน:
+  // 1. ดึงข้อมูลตะกร้าที่มีอยู่จาก localStorage
+  // 2. ตรวจสอบสต็อกว่ามีของเหลือไหม (ถ้าหมดแสดงแจ้งเตือน)
+  // 3. ถ้ามีสินค้านี้ในตะกร้าอยู่แล้ว → บวกจำนวนเพิ่ม (แต่ต้องไม่เกินสต็อกสูงสุด)
+  // 4. ถ้าเป็นสินค้าใหม่ → เพิ่ม object ลงไปพร้อม set quantity = 1
+  // 5. บันทึกกลับเข้า localStorage และอัปเดต cartCount state
   const handleAddToCart = (item) => {
     try {
       const cartSaved = localStorage.getItem('ming_cart');
@@ -128,6 +237,14 @@ export default function Index() {
     } catch (e) { Alert.alert('Error', 'Could not add to cart.'); }
   };
 
+  // ════════════════════════════════════════
+  // handleDelete — ลบสินค้า (Admin Mode)
+  // ════════════════════════════════════════
+  // ขั้นตอนการทำงาน:
+  // 1. แสดงกล่องคอนเฟิร์ม (window.confirm) เพื่อยืนยันการลบ
+  // 2. ถ้ากดยืนยัน จะดึง admin_token จาก localStorage
+  // 3. ยิง API แบบ DELETE ไปที่เซิร์ฟเวอร์
+  // 4. ถ้าสำเร็จ → โหลดรายการสินค้าใหม่, ถ้าไม่สำเร็จ → แจ้งเตือนข้อผิดพลาด
   const handleDelete = async (id) => {
     const confirmed = typeof window !== 'undefined' && window.confirm
       ? window.confirm('Are you sure you want to delete this product?')
@@ -148,20 +265,32 @@ export default function Index() {
     } catch (e) { Alert.alert('Error', 'Cannot connect to server.'); }
   };
 
+  // ────────────────────────────────────────
+  // ฟังก์ชันจัดรูปแบบการแสดงผล
+  // ────────────────────────────────────────
+  // formatId: เติมตัวอักษร P ให้รหัส และจัดการรูปแบบให้เป็น 3 หลัก
   const formatId = (id) => {
     const s = String(id).toUpperCase();
     return s.startsWith('P') ? s : `P${String(id).padStart(3, '0')}`;
   };
 
-  // ────────────────────────────────────────────
-  // MOBILE LAYOUT
-  // ────────────────────────────────────────────
+  // formatPrice: จัดรูปแบบราคาให้มี comma คั่นหลักพัน เช่น 47600 → "47,600"
+  const formatPrice = (price) => {
+    const num = String(price).replace(/[^0-9]/g, '');
+    if (!num) return '0';
+    return Number(num).toLocaleString('en-US');
+  };
+
+  // ════════════════════════════════════════
+  // MOBILE LAYOUT - การแสดงผลสำหรับมือถือ
+  // ════════════════════════════════════════
+  // แยกการแสดงผลออกมาสำหรับหน้าจอที่มีความกว้างน้อยกว่า 768px (Responsive Design)
   if (isMobile) {
     return (
       <SafeAreaView style={m.container}>
         <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-        {/* ── Mobile Nav ── */}
+        {/* ── Mobile Nav - แถบนำทางด้านบน ── */}
         <View style={m.nav}>
           <Text style={m.navLogo}>MING OPTIC</Text>
           <View style={m.navRight}>
@@ -176,7 +305,7 @@ export default function Index() {
             </Pressable>
             {!isAdmin ? (
               <Pressable style={m.adminBtn} onPress={() => router.push('/login')}>
-                <Text style={m.adminBtnText}>Admin</Text>
+                <Text style={m.adminBtnText}>🔐 Admin Login</Text>
               </Pressable>
             ) : (
               <Pressable style={m.logoutBtn} onPress={() => router.replace('/')}>
@@ -186,9 +315,9 @@ export default function Index() {
           </View>
         </View>
 
-        {/* ── Search Bar (toggle) + Autocomplete ── */}
+        {/* ── Search Bar (toggle) + Autocomplete - ช่องค้นหาและตัวช่วยค้นหา ── */}
         {showSearch && (
-          <View style={{ zIndex: 100 }}>
+          <View style={{ zIndex: 100, elevation: 10 }}>
             <View style={m.searchBar}>
               <TextInput
                 style={m.searchInput}
@@ -216,7 +345,7 @@ export default function Index() {
                     <Text style={m.suggestionIcon}>🔍</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={m.suggestionText} numberOfLines={1}>{item.name || item.productname}</Text>
-                      <Text style={m.suggestionPrice}>฿{item.price}</Text>
+                      <Text style={m.suggestionPrice}>฿{formatPrice(item.price)}</Text>
                     </View>
                     <Image source={{ uri: item.image || item.img || item.image_url }} style={m.suggestionImg} />
                   </TouchableOpacity>
@@ -228,7 +357,7 @@ export default function Index() {
 
         <ScrollView showsVerticalScrollIndicator={false}>
 
-          {/* ── Hero (compact) ── */}
+          {/* ── Hero (compact) - ส่วนหัวโปรโมท ── */}
           {!isAdmin && (
             <View style={m.hero}>
               <Text style={m.heroEyebrow}>✦ PREMIUM EYEWEAR</Text>
@@ -237,7 +366,7 @@ export default function Index() {
             </View>
           )}
 
-          {/* ── Admin Panel ── */}
+          {/* ── Admin Panel - แผงควบคุมสำหรับผู้ดูแลระบบ ── */}
           {isAdmin && (
             <View style={m.adminPanel}>
               <Text style={m.adminPanelTitle}>👑 Admin Dashboard</Text>
@@ -247,7 +376,7 @@ export default function Index() {
             </View>
           )}
 
-          {/* ── Section Header ── */}
+          {/* ── Section Header - หัวข้อแสดงผลการค้นหาหรือคอลเลกชัน ── */}
           <View style={m.sectionHeader}>
             <Text style={m.sectionTitle}>
               {search ? `"${search}"` : isAdmin ? 'All Products' : 'Our Collection'}
@@ -255,7 +384,7 @@ export default function Index() {
             <Text style={m.sectionCount}>{products.length} items</Text>
           </View>
 
-          {/* ── Product Grid (2 columns) ── */}
+          {/* ── Product Grid (2 columns) - ลิสต์รายการสินค้าแบบ 2 คอลัมน์ ── */}
           {products.length === 0 ? (
             <View style={m.emptyState}>
               <Text style={{ fontSize: 40, marginBottom: 10 }}>👓</Text>
@@ -293,7 +422,7 @@ export default function Index() {
                         {Number(item.stock) === 0 ? 'Out of stock' : `${item.stock} in stock`}
                       </Text>
                     </View>
-                    <Text style={m.price}>฿{item.price}</Text>
+                    <Text style={m.price}>฿{formatPrice(item.price)}</Text>
 
                     {/* Action */}
                     {!isAdmin ? (
@@ -330,14 +459,14 @@ export default function Index() {
     );
   }
 
-  // ────────────────────────────────────────────
-  // DESKTOP LAYOUT
-  // ────────────────────────────────────────────
+  // ════════════════════════════════════════
+  // DESKTOP LAYOUT - การแสดงผลสำหรับคอมพิวเตอร์/แท็บเล็ต
+  // ════════════════════════════════════════
   return (
     <SafeAreaView style={d.container}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-      {/* ── Desktop Nav ── */}
+      {/* ── Desktop Nav - แถบนำทางด้านบนสำหรับ Desktop ── */}
       <View style={d.nav}>
         <Text style={d.navLogo}>MING OPTIC</Text>
         <View style={{ flex: 1, zIndex: 100 }}>
@@ -368,7 +497,7 @@ export default function Index() {
                   <Image source={{ uri: item.image || item.img || item.image_url }} style={d.suggestionImg} />
                   <View style={{ flex: 1 }}>
                     <Text style={d.suggestionText}>{item.name || item.productname}</Text>
-                    <Text style={d.suggestionPrice}>฿{item.price}</Text>
+                    <Text style={d.suggestionPrice}>฿{formatPrice(item.price)}</Text>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -384,7 +513,7 @@ export default function Index() {
           </Pressable>
           {!isAdmin ? (
             <Pressable style={d.loginBtn} onPress={() => router.push('/login')}>
-              <Text style={d.loginBtnText}>🔐 Admin</Text>
+              <Text style={d.loginBtnText}>🔐 Admin Login</Text>
             </Pressable>
           ) : (
             <Pressable style={d.logoutBtn} onPress={() => router.replace('/')}>
@@ -395,7 +524,7 @@ export default function Index() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Hero */}
+        {/* Hero - ส่วนหัวโปรโมทขนาดใหญ่ */}
         {!isAdmin && (
           <View style={d.hero}>
             <Text style={d.heroEyebrow}>✦ PREMIUM EYEWEAR COLLECTION</Text>
@@ -404,7 +533,7 @@ export default function Index() {
           </View>
         )}
 
-        {/* Admin Panel */}
+        {/* Admin Panel - แผงควบคุมผู้ดูแลระบบแบบเต็มกว้าง */}
         {isAdmin && (
           <View style={d.adminPanel}>
             <View>
@@ -425,7 +554,7 @@ export default function Index() {
           <Text style={d.sectionCount}>{products.length} items</Text>
         </View>
 
-        {/* Product Grid */}
+        {/* Product Grid - ลิสต์รายการสินค้าแบบหลายคอลัมน์ */}
         {products.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 80 }}>
             <Text style={{ fontSize: 56, marginBottom: 16 }}>👓</Text>
@@ -460,7 +589,7 @@ export default function Index() {
                       {Number(item.stock) === 0 ? 'Out of stock' : `${item.stock} in stock`}
                     </Text>
                   </View>
-                  <Text style={d.priceText}>฿{item.price}</Text>
+                  <Text style={d.priceText}>฿{formatPrice(item.price)}</Text>
                   {!isAdmin ? (
                     <TouchableOpacity
                       style={[d.addToCartBtn, Number(item.stock) === 0 && d.disabledBtn]}
@@ -496,8 +625,9 @@ export default function Index() {
 }
 
 // ══════════════════════════════════════
-// MOBILE STYLES (m)
+// MOBILE STYLES (m) - สไตล์ชีตสำหรับมือถือ
 // ══════════════════════════════════════
+// คลาสการออกแบบที่ใช้กับอุปกรณ์หน้าจอขนาดเล็ก (จัดระยะขอบขนาดเล็ก)
 const m = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
@@ -645,8 +775,9 @@ const m = StyleSheet.create({
 });
 
 // ══════════════════════════════════════
-// DESKTOP STYLES (d)
+// DESKTOP STYLES (d) - สไตล์ชีตสำหรับคอมพิวเตอร์และแท็บเล็ต
 // ══════════════════════════════════════
+// คลาสการออกแบบที่ใช้กับอุปกรณ์หน้าจอขนาดใหญ่ (มี padding และขนาดองค์ประกอบใหญ่กว่า)
 const d = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
@@ -656,6 +787,7 @@ const d = StyleSheet.create({
     backgroundColor: '#0B1628',
     paddingHorizontal: 24, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: C.border, gap: 16,
+    zIndex: 100, elevation: 10,
   },
   navLogo: { fontSize: 18, fontWeight: '900', color: C.gold, letterSpacing: 3, minWidth: 130 },
   navSearch: {

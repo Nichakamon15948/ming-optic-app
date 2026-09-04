@@ -1,9 +1,25 @@
+/* ════════════════════════════════════════════════════════════
+// ไฟล์ชื่อ — global.css สไตล์ชีทส่วนกลางของเว็บ (Global Stylesheet)
+// ════════════════════════════════════════════════════════════
+// หน้าที่ของไฟล์:
+// กำหนดตัวแปร CSS (CSS Variables) ในระดับ :root ซึ่งหมายถึงครอบคลุมทั้งเอกสาร
+// เพื่อจัดเตรียมฟอนต์รูปแบบต่างๆ (sans, mono, rounded, serif) ไว้ใช้งานโดยเฉพาะแพลตฟอร์มเว็บ 
+// ซึ่งจะถูกดึงไปใช้ในไฟล์ theme.ts
+// ════════════════════════════════════════════════════════════ */
+
 :root {
+  /* --font-display: สำหรับฟอนต์หลักที่ใช้อ่านทั่วไป รองรับอีโมจิและฟอนต์มาตรฐานของระบบ */
   --font-display:
     Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
     Segoe UI Symbol, Noto Color Emoji;
+  
+  /* --font-mono: สำหรับฟอนต์ประเภทโค้ด (ความกว้างเท่ากัน) */
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+  
+  /* --font-rounded: สำหรับฟอนต์แบบปลายมน ดูนุ่มนวล */
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
+  
+  /* --font-serif: สำหรับฟอนต์แบบมีหัว (Serif) เช่น การอ่านบทความยาวๆ */
   --font-serif: Georgia, 'Times New Roman', serif;
 }

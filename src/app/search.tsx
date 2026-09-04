@@ -1,6 +1,25 @@
+// ════════════════════════════════════════
+// search.tsx — หน้าค้นหาสินค้า (Search Page)
+// ════════════════════════════════════════
+// อธิบายรายละเอียด:
+// ไฟล์นี้เป็นหน้าตัวอย่าง (Demo Page) สำหรับค้นหาสินค้า โดยการค้นหาหลักของแอปจะอยู่ที่ไฟล์ index.tsx
+// หน้าเพจนี้แสดง UI พื้นฐานสำหรับการค้นหา ประกอบด้วยช่องกรอกข้อความและปุ่มกด
+// 
+// State Variables:
+// - query: เก็บข้อความค้นหาที่ผู้ใช้พิมพ์ผ่าน TextInput
+
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
+// ════════════════════════════════════════
+// SearchScreen — Component หลักของหน้าค้นหา
+// ════════════════════════════════════════
+// ขั้นตอนการทำงาน:
+// 1. สร้าง state `query` เพื่อเก็บค่าข้อความที่พิมพ์
+// 2. แสดง UI ประกอบด้วย:
+//    - ไอคอน 🔍 และหัวข้อ "Search Glasses"
+//    - ช่อง TextInput ให้ผู้ใช้กรอกข้อความ
+//    - ปุ่ม TouchableOpacity สำหรับสั่งค้นหา
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
   return (

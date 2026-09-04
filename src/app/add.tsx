@@ -7,7 +7,7 @@
 // ============================================================
 
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Alert, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { API_BASE_URL } from '../constants/api';
 
@@ -18,6 +18,22 @@ const C = {
   text: '#F1F5F9', textMuted: '#94A3B8', red: '#EF4444', green: '#10B981',
 };
 
+type FieldProps = {
+  label: string;
+  error?: string;
+  children: ReactNode;
+};
+
+function Field({ label, error, children }: FieldProps) {
+  return (
+    <View style={styles.fieldGroup}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+}
+
 export default function AddProductScreen() {
   // router — ใช้สำหรับเปลี่ยนหน้า (navigate)
   const router = useRouter();
@@ -25,8 +41,6 @@ export default function AddProductScreen() {
   // ══════════════════════════════════════
   // State ทั้งหมดของหน้า Add
   // ══════════════════════════════════════
-  // productId — รหัสสินค้า (เช่น "P004") ผู้ใช้กรอกเอง
-  const [productId, setProductId] = useState('');
   // name — ชื่อสินค้า (เช่น "Round Metal Sunglasses")
   const [name, setName] = useState('');
   // price — ราคาสินค้า (เก็บเป็น string เพราะมาจาก TextInput)
@@ -36,8 +50,7 @@ export default function AddProductScreen() {
   // image — URL ของรูปภาพสินค้า
   const [image, setImage] = useState('');
   // errors — object เก็บข้อความ error ของแต่ละ field
-  // ตัวอย่าง: { productId: 'Product ID is required.', name: '' }
-  // ใช้ key เป็นชื่อ field, value เป็น error message (ว่าง = ไม่มี error)
+  // ตัวอย่าง: { name: 'Product Name is required.' }
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   // isSubmitting — สถานะกำลังส่งข้อมูล (true = กำลังรอ server, ปุ่มจะ disable)
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,20 +67,8 @@ export default function AddProductScreen() {
   // ══════════════════════════════════════
   // validate — ตรวจสอบข้อมูลก่อนส่ง (Form Validation)
   // ══════════════════════════════════════
-  // ฟังก์ชันนี้จะตรวจสอบทุกช่อง แล้วเก็บ error message ไว้ใน object
-  // ถ้าไม่มี error เลย → return true (ผ่าน validation)
-  // ถ้ามี error → return false + set errors state เพื่อแสดงข้อความ error ใต้แต่ละช่อง
-  //
-  // เงื่อนไขการตรวจสอบ:
-  // - productId: ต้องไม่ว่าง + ต้องเป็นตัวอักษรหรือตัวเลขเท่านั้น (A-Z, a-z, 0-9)
-  // - name: ต้องไม่ว่าง + ต้องมีอย่างน้อย 2 ตัวอักษร
-  // - price: ต้องไม่ว่าง + ต้องมีตัวเลข
-  // - stock: ต้องไม่ว่าง
-  // - image: ต้องไม่ว่าง + ต้องขึ้นต้นด้วย http:// หรือ https://
   const validate = (): boolean => {
     const e: { [k: string]: string } = {};
-    if (!productId.trim()) e.productId = 'Product ID is required.';
-    else if (!/^[A-Za-z0-9]+$/.test(productId.trim())) e.productId = 'Letters and numbers only (e.g. P004).';
     if (!name.trim()) e.name = 'Product Name is required.';
     else if (name.trim().length < 2) e.name = 'At least 2 characters.';
     if (!price || !price.replace(/[^0-9]/g, '')) e.price = 'Price is required.';
@@ -82,60 +83,49 @@ export default function AddProductScreen() {
   // ══════════════════════════════════════
   // handleAddProduct — ส่งข้อมูลสินค้าใหม่ไป server
   // ══════════════════════════════════════
-  // ขั้นตอนการทำงาน:
-  // 1. เรียก validate() ตรวจสอบข้อมูล → ถ้าไม่ผ่านจะหยุดทันที
-  // 2. ส่ง POST request ไปที่ /products endpoint พร้อมข้อมูลสินค้า
-  // 3. ถ้าสำเร็จ → แสดง Alert "Success" แล้ว redirect กลับหน้าหลัก
-  // 4. ถ้าไม่สำเร็จ → แสดง Alert "Error" พร้อมข้อความจาก server
   const handleAddProduct = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
     try {
+      // สร้างรหัสสินค้าอัตโนมัติ: ดึงสินค้าทั้งหมดจาก server แล้วหาเลขล่าสุด
+      const listRes = await fetch(`${API_BASE_URL}/products`);
+      const allItems = await listRes.json();
+      let newId = 'P001';
+      if (Array.isArray(allItems) && allItems.length > 0) {
+        // หาเลขสูงสุดที่ขึ้นต้นด้วย P
+        let maxNum = 0;
+        allItems.forEach(item => {
+          const id = item.id || '';
+          if (/^P\d+$/i.test(id)) {
+            const num = parseInt(id.substring(1), 10);
+            if (num > maxNum) maxNum = num;
+          }
+        });
+        newId = 'P' + String(maxNum + 1).padStart(3, '0');
+      }
+
       const response = await fetch(`${API_BASE_URL}/products`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: productId.trim(), name: name.trim(),
-          // ทำความสะอาดข้อมูลก่อนส่ง — เหลือเฉพาะตัวเลข
-          stock: stock.replace(/[^0-9]/g, ''), price, image: image.trim()
+          id: newId,
+          name: name.trim(),
+          stock: stock.replace(/[^0-9]/g, ''), 
+          price, 
+          image: image.trim()
         })
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        // เพิ่มสำเร็จ → แสดง Alert แจ้งเตือน
-        Alert.alert('Success', 'Product added successfully!');
-        // redirect กลับหน้าหลัก (admin mode) พร้อม refresh
+        Alert.alert('Success', `Product added! ID: ${newId}`);
         router.replace(`/?admin=true&refresh=${Date.now()}`);
       } else {
-        // server ตอบว่าไม่สำเร็จ → แสดง error
         Alert.alert('Error', data.error || 'Failed to save product.');
       }
     } catch (e) {
-      // ไม่สามารถเชื่อมต่อ server ได้
       Alert.alert('Connection Error', 'Cannot connect to server.');
     } finally { setIsSubmitting(false); }
   };
-
-  // ══════════════════════════════════════
-  // Field — คอมโพเนนต์ย่อยสำหรับแต่ละช่องกรอกข้อมูล
-  // ══════════════════════════════════════
-  // Field คือ "wrapper component" ที่ครอบ TextInput แต่ละตัว
-  // ทำหน้าที่:
-  // - แสดง label (ป้ายกำกับ) ด้านบน
-  // - แสดง children (TextInput หรือ element อื่น) ตรงกลาง
-  // - แสดง error message ด้านล่าง (ถ้ามี)
-  // Props:
-  // - label: ข้อความป้ายกำกับ (เช่น "PRODUCT NAME")
-  // - error: ข้อความ error (ถ้ามี) จะแสดงเป็นสีแดงใต้ช่องกรอก
-  // - children: element ที่จะครอบ (ส่วนใหญ่คือ TextInput)
-  const Field = ({ label, error, children }) => (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.label}>{label}</Text>
-      {children}
-      {/* แสดง error message เฉพาะเมื่อมี error */}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -152,22 +142,8 @@ export default function AddProductScreen() {
           {/* ── หัวข้อฟอร์ม ── */}
           <View style={styles.formHeader}>
             <Text style={styles.formTitle}>Add New Eyewear</Text>
-            <Text style={styles.formSub}>Fill in the details below to add a product to your catalog.</Text>
+            <Text style={styles.formSub}>Fill in the details below. The Product ID will be generated automatically.</Text>
           </View>
-
-          {/* ── ช่องกรอก: Product ID ── */}
-          {/* ใช้ Field component ครอบ เพื่อแสดง label + error อัตโนมัติ */}
-          <Field label="PRODUCT ID" error={errors.productId}>
-            <TextInput
-              // ถ้ามี error → เพิ่ม style ขอบแดง (inputErr)
-              style={[styles.input, errors.productId && styles.inputErr]}
-              placeholder="e.g. P004"
-              placeholderTextColor={C.textMuted}
-              value={productId}
-              // เมื่อพิมพ์ → อัปเดต state + ล้าง error ของช่องนี้
-              onChangeText={t => { setProductId(t); if (errors.productId) setErrors(p => ({ ...p, productId: '' })); }}
-            />
-          </Field>
 
           {/* ── ช่องกรอก: Product Name ── */}
           <Field label="PRODUCT NAME" error={errors.name}>

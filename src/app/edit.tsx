@@ -1,18 +1,15 @@
 // ============================================================
 // edit.tsx - หน้าแก้ไขสินค้า (Edit Product)
 // ============================================================
-// หน้านี้ใช้สำหรับ Admin แก้ไขข้อมูลสินค้าที่มีอยู่แล้ว
-// ข้อมูลสินค้าเดิมจะถูกส่งมาผ่าน URL query parameter
-// เมื่อแก้ไขเสร็จจะส่ง PUT request (พร้อม JWT Token) ไป server
-// แล้ว redirect กลับหน้าหลัก
-// ============================================================
 
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { API_BASE_URL } from '../constants/api';
+// 1. นำเข้าเครื่องมือที่จำเป็น (Imports)
+import { useLocalSearchParams, useRouter } from 'expo-router'; // จัดการเรื่องการเปลี่ยนหน้าจอและการดึงพารามิเตอร์จาก URL
+import { useEffect, useState } from 'react'; // จัดการ State (ข้อมูลหน้าจอ) และ Lifecycle (วงจรการทำงาน)
+import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'; // ตัววาด UI
+import { API_BASE_URL } from '../constants/api'; // นำเข้าลิงก์ API หลักของโปรเจกต์
 
-// ชุดสี (Color Palette) ใช้ร่วมกันทั้งหน้า
+// 2. กำหนดชุดสี (Color Palette) 
+// เก็บใส่ตัวแปร C เพื่อให้เรียกใช้ง่ายและแก้ไขสีทั้งหน้าได้จากจุดเดียว
 const C = {
   bg: '#0F172A', surface: '#1E293B', surface2: '#263548',
   border: '#334155', gold: '#C9A84C', text: '#F1F5F9',
@@ -20,91 +17,110 @@ const C = {
 };
 
 export default function EditProductScreen() {
-  // router - ใช้สำหรับเปลี่ยนหน้า (navigate)
+  // สร้างตัวแปร router สำหรับสั่งเปลี่ยนหน้า
   const router = useRouter();
-  // params - อ่าน query parameter จาก URL
+  // สร้างตัวแปร params สำหรับรับข้อมูลสินค้าที่ส่งพ่วงมากับ URL จากหน้าหลัก
   const params = useLocalSearchParams();
 
-  // State ทั้งหมดของหน้า Edit
+  // 3. สร้าง State เพื่อเก็บข้อมูลแต่ละช่องในฟอร์ม
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [stock, setStock] = useState('');
   const [image, setImage] = useState('');
-  const [productId, setProductId] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [productId, setProductId] = useState(null); // เก็บ ID ของสินค้าที่กำลังแก้
+  
+  // State สำหรับจัดการสถานะของหน้าจอ
+  const [isSubmitting, setIsSubmitting] = useState(false); // เช็กว่ากำลังกดเซฟอยู่ไหม (ป้องกันการกดรัว)
+  const [errorMsg, setErrorMsg] = useState(''); // ข้อความแจ้งเตือนสีแดง
+  const [successMsg, setSuccessMsg] = useState(''); // ข้อความสำเร็จสีเขียว
 
-  // useEffect - ดึงข้อมูลสินค้าเดิมจาก URL parameter
+  // 4. useEffect: ดึงข้อมูลสินค้าเดิมมาแสดงในช่องกรอก
+  // จะทำงานทันทีเมื่อได้รับ params.product
   useEffect(() => {
     if (params.product) {
       try {
+        // ถอดรหัสข้อความ String จาก URL กลับมาเป็นก้อน Object
         const item = JSON.parse(decodeURIComponent(params.product as string));
+        
+        // เอาข้อมูลเดิมมาตั้งค่าให้ State แต่ละตัว
         setProductId(item.id);
         setName(item.name || '');
+        // กรองราคาให้ชัวร์ว่ามีแค่ตัวเลข ก่อนนำไปแสดงผล
         const rawPrice = String(item.price || '').replace(/[^0-9.]/g, '');
         setPrice(rawPrice);
-        setStock(String(item.stock || ''));
+        setStock(String(item.stock ?? ''));
         setImage(item.image || item.image_url || '');
       } catch (e) { console.error(e); }
     }
   }, [params.product]);
 
-  // handlePriceChange - กรองให้เหลือเฉพาะตัวเลขและจุดทศนิยม
+  // 5. Data Validation ฝั่ง Frontend: กรองช่องราคา
+  // เมื่อแอดมินพิมพ์ ระบบจะอนุญาตให้กรอกได้แค่ "ตัวเลขและจุดทศนิยม" เท่านั้น
   const handlePriceChange = (text: string) => {
-    const num = text.replace(/[^0-9.]/g, '');
+    const num = text.replace(/[^0-9.]/g, ''); // Regex กรองตัวอักษรทิ้ง
     setPrice(num);
-    setErrorMsg('');
+    setErrorMsg(''); // พิมพ์ปุ๊บ ให้ลบข้อความ Error ทิ้ง
   };
 
-  // handleSaveEdit - บันทึกการแก้ไขสินค้า
-  // 1. ตรวจสอบข้อมูลครบ
-  // 2. ส่ง PUT request พร้อม JWT Token ไป server
-  // 3. สำเร็จ = แสดง success แล้ว redirect กลับ
+  // 6. ฟังก์ชันหลัก: การบันทึกข้อมูล (Save)
   const handleSaveEdit = async () => {
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!name || !price || !stock || !image) {
+    // สเต็ปที่ 1: เช็กว่ากรอกข้อมูลครบทุกช่องไหม ถ้าไม่ครบให้เตือน
+    // ใช้ stock === '' แทน !stock เพื่อให้ค่า "0" (สินค้าหมดสต็อก) ผ่าน validation ได้
+    if (!name || !price || stock === '' || !image) {
       setErrorMsg('Please fill in all fields');
-      return;
+      return; // หยุดการทำงาน
     }
 
-    setIsSubmitting(true);
+    setIsSubmitting(true); // ล็อคปุ่ม ป้องกันผู้ใช้กดซ้ำระหว่างรอเซิร์ฟเวอร์
     try {
-      const cleanPrice = price.replace(/[^0-9.]/g, '');
+      // คลีนตัวเลขอีกรอบให้ชัวร์ก่อนส่งไป Database
+      const cleanPrice = price.replace(/[^0-9.]/g, ''); 
       const cleanStock = stock.replace(/[^0-9]/g, '');
 
-      // ดึง JWT Token ที่เก็บไว้ตอน login
+      // สเต็ปที่ 2: ดึง JWT Token (กุญแจยืนยันสิทธิ์แอดมิน) ออกมาจากระบบ
       const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
 
-      // ส่ง PUT request พร้อม Authorization header
+      // สเต็ปที่ 3: ส่งข้อมูลไปที่ Backend API เพื่อแก้ไขข้อมูล (ใช้ Method PUT)
       const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}` // แนบ Token ไปด้วยเพื่อความปลอดภัย
         },
-        body: JSON.stringify({ name, stock: cleanStock, price: cleanPrice, image })
+        body: JSON.stringify({ name, stock: cleanStock, price: cleanPrice, image }) // แปลงข้อมูลฟอร์มเป็น JSON
       });
-      const data = await response.json();
+      const data = await response.json(); // รอรับคำตอบจากเซิร์ฟเวอร์
 
+      // สเต็ปที่ 4: จัดการคำตอบจากเซิร์ฟเวอร์
       if (response.ok && data.success) {
+        // ถ้าสำเร็จ: โชว์ข้อความสีเขียว แล้วหน่วงเวลา 0.8 วิ ก่อนเด้งกลับหน้าแรก
         setSuccessMsg('Product updated successfully!');
         setTimeout(() => {
+          // เด้งกลับและส่งพารามิเตอร์ refresh เพื่อบังคับให้หน้าแรกดึงข้อมูลใหม่
           router.replace(`/?admin=true&refresh=${Date.now()}`);
         }, 800);
       } else {
+        // ถ้า API ฟ้อง Error ให้เอาข้อความนั้นมาโชว์แอดมิน
         setErrorMsg(data.error || data.message || 'Failed to update product');
       }
     } catch (e) {
+      // ถ้าเน็ตหลุด หรือติดต่อเซิร์ฟเวอร์ไม่ได้
       console.error('Edit save error:', e, 'URL:', `${API_BASE_URL}/products/${productId}`);
       setErrorMsg('Cannot connect to server: ' + (e.message || String(e)));
-    } finally { setIsSubmitting(false); }
+    } finally { 
+      setIsSubmitting(false); // ปลดล็อคปุ่ม
+    }
   };
 
+  // ============================================================
+  // 7. ส่วนการวาดหน้าจอ (UI Component)
+  // ============================================================
   return (
     <SafeAreaView style={styles.container}>
+      {/* แถบด้านบนสุด (Top Bar) */}
       <View style={styles.topBar}>
         <Text style={styles.logo}>MING OPTIC</Text>
         <Pressable style={styles.backBtn} onPress={() => router.replace('/?admin=true')}>
@@ -112,11 +128,15 @@ export default function EditProductScreen() {
         </Pressable>
       </View>
 
+      {/* ใช้ ScrollView เพื่อให้ฟอร์มสามารถไถขึ้นลงได้ */}
       <ScrollView contentContainerStyle={{ paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
         <View style={styles.formWrapper}>
+          
+          {/* ส่วนหัวของฟอร์ม */}
           <View style={styles.formHeader}>
             <Text style={styles.formTitle}>Edit Eyewear</Text>
             <Text style={styles.formSub}>Update the product details below</Text>
+            {/* Conditional Rendering: ถ้ามี ID สินค้า ถึงจะโชว์ป้ายกำกับ ID */}
             {productId && (
               <View style={styles.idChip}>
                 <Text style={styles.idChipText}>{'Editing ID: ' + productId}</Text>
@@ -124,35 +144,40 @@ export default function EditProductScreen() {
             )}
           </View>
 
+          {/* กล่องแจ้งเตือน Error สีแดง (โชว์เมื่อตัวแปร errorMsg ไม่ว่างเปล่า) */}
           {errorMsg !== '' && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           )}
 
+          {/* กล่องสำเร็จ สีเขียว (โชว์เมื่อเซฟเสร็จ) */}
           {successMsg !== '' && (
             <View style={styles.successBox}>
               <Text style={styles.successText}>{successMsg}</Text>
             </View>
           )}
 
+          {/* ช่องกรอก ชื่อสินค้า */}
           <Text style={styles.label}>PRODUCT NAME</Text>
           <TextInput
             style={styles.input}
             value={name}
-            onChangeText={(t) => { setName(t); setErrorMsg(''); }}
+            onChangeText={(t) => { setName(t); setErrorMsg(''); }} // พิมพ์ปุ๊บอัปเดต State ปั๊บ
             placeholderTextColor={C.textMuted}
           />
 
+          {/* ช่องกรอก ราคา (บังคับใช้แป้นพิมพ์ตัวเลข keyboardType="numeric") */}
           <Text style={styles.label}>PRICE</Text>
           <TextInput
             style={styles.input}
             value={price}
-            onChangeText={handlePriceChange}
+            onChangeText={handlePriceChange} // เรียกใช้ฟังก์ชันกรอง Regex
             keyboardType="numeric"
             placeholderTextColor={C.textMuted}
           />
 
+          {/* ช่องกรอก สต็อก (กรองให้เหลือเฉพาะตัวเลข 0-9) */}
           <Text style={styles.label}>STOCK (UNITS)</Text>
           <TextInput
             style={styles.input}
@@ -162,6 +187,7 @@ export default function EditProductScreen() {
             placeholderTextColor={C.textMuted}
           />
 
+          {/* ช่องกรอก ลิงก์รูปภาพ */}
           <Text style={styles.label}>IMAGE URL</Text>
           <TextInput
             style={styles.input}
@@ -170,14 +196,17 @@ export default function EditProductScreen() {
             placeholderTextColor={C.textMuted}
           />
 
+          {/* ปุ่ม Save Changes */}
           <Pressable
+            // ผสมสไตล์: ถ้ากำลังโหลดอยู่ (isSubmitting) จะเปลี่ยนสีปุ่มให้ดูทึบลง
             style={[styles.saveBtn, isSubmitting && styles.saveBtnDisabled]}
             onPress={handleSaveEdit}
-            disabled={isSubmitting}
+            disabled={isSubmitting} // ป้องกันการกดเบิ้ล
           >
             <Text style={styles.saveBtnText}>{isSubmitting ? 'Saving...' : 'Save Changes'}</Text>
           </Pressable>
 
+          {/* ปุ่มยกเลิก กลับหน้าหลัก */}
           <Pressable style={styles.cancelBtn} onPress={() => router.replace('/?admin=true')}>
             <Text style={styles.cancelBtnText}>Cancel</Text>
           </Pressable>
@@ -187,6 +216,9 @@ export default function EditProductScreen() {
   );
 }
 
+// ============================================================
+// 8. ส่วนจัดรูปแบบความสวยงาม (CSS/Styles)
+// ============================================================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   topBar: {

@@ -1,3 +1,14 @@
+// ════════════════════════════════════════
+// app-tabs.web.tsx — Tab Navigation สำหรับเว็บ (Web Version)
+// ════════════════════════════════════════
+// อธิบายรายละเอียด:
+// ไฟล์นี้มาจากเทมเพลต Expo ดั้งเดิม ใช้สร้างแถบ Tab สำหรับเว็บโดยเฉพาะ
+// ⚠️ แอป Ming Optic ใช้ Drawer Navigation แทน จึงไม่ได้เรียกใช้ไฟล์นี้โดยตรง
+//
+// Component ที่อยู่ในไฟล์นี้:
+// 1. AppTabs       — Component หลักที่ครอบ Tab ทั้งหมด (Home + Explore)
+// 2. TabButton     — ปุ่มแต่ละ Tab (เปลี่ยนสีเมื่อถูกเลือก isFocused)
+// 3. CustomTabList — แถบ Tab ด้านบน พร้อมชื่อ "Expo Starter" และลิงก์ไป Docs
 import {
   Tabs,
   TabList,

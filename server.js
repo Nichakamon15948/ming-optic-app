@@ -576,39 +576,45 @@ app.get('/api/products', (req, res) => {
  *    DB error:  { success: false, error: "Database error: ..." }
  * ────────────────────────────────────────────────────────────────────────────── */
 app.post('/api/products', (req, res) => {
-  // ดึงข้อมูลสินค้าจาก request body ด้วย destructuring
-  const { id, name, stock, price, image } = req.body;
+  // ไม่บังคับให้ส่ง id มาแล้ว เพราะเราจะสร้างให้เอง
+  const { name, stock, price, image } = req.body;
 
-  // ตรวจสอบว่าส่งข้อมูลมาครบทุกช่องหรือไม่
-  // ถ้าช่องใดช่องหนึ่งเป็น null, undefined, '', 0 → ถือว่าไม่ครบ
-  if (!id || !name || !stock || !price || !image) {
-    // ส่ง HTTP 400 (Bad Request) → แจ้งว่าข้อมูลไม่ครบ
-    return res.status(400).json({ success: false, error: 'All fields are required.' });
+  // ตรวจสอบข้อมูลที่จำเป็น (ยกเว้น id)
+  if (!name || !stock || !price || !image) {
+    return res.status(400).json({ success: false, error: 'All fields (name, stock, price, image) are required.' });
   }
 
-  // สร้างคำสั่ง SQL INSERT เพื่อเพิ่มข้อมูลลงตาราง products
-  // VALUES (?, ?, ?, ?, ?) ใช้ placeholder ป้องกัน SQL Injection
-  const sql = 'INSERT INTO products (id, name, stock, price, image) VALUES (?, ?, ?, ?, ?)';
+  // ค้นหารหัสสินค้าล่าสุดที่ขึ้นต้นด้วย 'P' เพื่อรันเลขอัตโนมัติ (เช่น P001, P002)
+  const getLastIdSql = 'SELECT id FROM products WHERE id LIKE "P%" ORDER BY CAST(SUBSTRING(id, 2) AS UNSIGNED) DESC LIMIT 1';
   
-  // ส่งคำสั่ง SQL ไป MySQL พร้อมข้อมูลที่จะ INSERT
-  db.query(sql, [id, name, stock, price, image], (err, results) => {
-    if (err) {
-      console.error('Insert error:', err.message);
-
-      // ตรวจสอบว่า error เกิดจาก id ซ้ำหรือไม่ (Duplicate Entry)
-      // MySQL จะส่ง error code 'ER_DUP_ENTRY' เมื่อ INSERT ข้อมูลที่มี
-      // PRIMARY KEY หรือ UNIQUE KEY ซ้ำกับที่มีอยู่แล้ว
-      if (err.code === 'ER_DUP_ENTRY') {
-        // ส่ง HTTP 409 (Conflict) → แจ้งว่า id ซ้ำ
-        return res.status(409).json({ success: false, error: `Product ID "${id}" already exists. Please use a different ID.` });
-      }
-
-      // error อื่นๆ → ส่ง HTTP 500 (Internal Server Error)
-      return res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+  db.query(getLastIdSql, (err1, results1) => {
+    if (err1) {
+      return res.status(500).json({ success: false, error: 'Database error when generating ID: ' + err1.message });
     }
 
-    // INSERT สำเร็จ → ส่งข้อความยืนยันกลับ
-    res.json({ success: true, message: 'Product added successfully!' });
+    let newId = 'P000'; // ค่าเริ่มต้นถ้ายังไม่มีสินค้าเลย
+    if (results1.length > 0) {
+      const lastId = results1[0].id; // เช่น "P005"
+      const lastNum = parseInt(lastId.substring(1), 10); // ได้ 5
+      if (!isNaN(lastNum)) {
+        newId = 'P' + String(lastNum + 1).padStart(3, '0'); // เปลี่ยนเป็น "P006"
+      }
+    }
+
+    // กรณี Frontend ยังส่ง id มาให้ (แบบเก่า) ให้ใช้ id ของเราที่สร้างใหม่แทน
+    const finalId = newId;
+
+    const sql = 'INSERT INTO products (id, name, stock, price, image) VALUES (?, ?, ?, ?, ?)';
+    db.query(sql, [finalId, name, stock, price, image], (err2, results2) => {
+      if (err2) {
+        console.error('Insert error:', err2.message);
+        if (err2.code === 'ER_DUP_ENTRY') {
+          return res.status(409).json({ success: false, error: `Product ID "${finalId}" already exists.` });
+        }
+        return res.status(500).json({ success: false, error: 'Database error: ' + err2.message });
+      }
+      res.json({ success: true, message: 'Product added successfully!', id: finalId });
+    });
   });
 });
 
